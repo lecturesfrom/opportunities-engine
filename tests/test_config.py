@@ -5,7 +5,10 @@ from opportunities_engine.config import DEFAULT_TARGET_TITLES, settings
 def test_target_titles_loaded():
     assert len(settings.target_titles) >= 10
     assert "GTM Engineer" in settings.target_titles
-    assert "Founding GTM Engineer" in settings.target_titles
+    # user-curated title universe now uses 'Founding GTM' (not 'Founding GTM Engineer')
+    assert "Founding GTM" in settings.target_titles
+    assert "Forward Deployed Engineer" in settings.target_titles
+    assert "Technical Product Manager" in settings.target_titles
 
 
 def test_paths_anchored_to_repo():
