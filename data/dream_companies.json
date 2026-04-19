@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "description": "Keegan's dream companies — reverse-engineered preference system",
+    "attraction_taxonomy": [
+      "mission_alignment",
+      "design_aesthetic",
+      "innovation_tech",
+      "product_love",
+      "team_culture",
+      "market_timing",
+      "personal_connection"
+    ],
+    "status_pipeline": ["researching", "targeting_team", "outreach", "nurturing", "active_opportunity"],
+    "created": "2026-04-18"
+  },
+  "companies": [
+    {
+      "name": "PostHog",
+      "url": "https://posthog.com",
+      "why_i_love_this": "Job descriptions are the coolest I've ever seen. Love their mentality, mission, and how they approach everything. Transparent, weird in the best way, product-led.",
+      "attraction_types": ["team_culture", "product_love", "innovation_tech"],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-18",
+      "notes": "Probably THE dream. Study how they write job descriptions — that's a signal for culture fit."
+    },
+    {
+      "name": "Vercel",
+      "url": "https://vercel.com",
+      "why_i_love_this": "Developer-first, incredible design, product I actually use and love. Infrastructure that feels like magic.",
+      "attraction_types": ["design_aesthetic", "product_love", "innovation_tech"],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-18"
+    },
+    {
+      "name": "Teenage Engineering",
+      "url": "https://teenage.engineering",
+      "why_i_love_this": "Design and aesthetic mastery. Physical products that feel like art. Cross-section of hardware + music + obsessive craft.",
+      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-18",
+      "notes": "Long-shot for GTM role, but cultural alignment is 10/10. Networking play."
+    },
+    {
+      "name": "Avid (Pro Tools)",
+      "url": "https://www.avid.com",
+      "why_i_love_this": "Pro Tools is the industry standard for audio. Music creation tooling is my passion zone.",
+      "attraction_types": ["product_love", "personal_connection"],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-18"
+    },
+    {
+      "name": "Moog Music",
+      "url": "https://www.moogmusic.com",
+      "why_i_love_this": "Synthesizers are art. Legendary brand with deep craft in hardware + sound design.",
+      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-18"
+    },
+    {
+      "name": "Suno",
+      "url": "https://suno.com",
+      "why_i_love_this": "AI music generation — the cutting edge of what I care about (AI + music).",
+      "attraction_types": ["innovation_tech", "product_love", "personal_connection"],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-18",
+      "notes": "Category: music generation/creation — user said 'any sort of music generation or creation'"
+    },
+    {
+      "name": "Udio",
+      "url": "https://www.udio.com",
+      "why_i_love_this": "AI music generation platform — same category as Suno, cutting edge.",
+      "attraction_types": ["innovation_tech", "product_love", "personal_connection"],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-18"
+    },
+    {
+      "name": "Ableton",
+      "url": "https://www.ableton.com",
+      "why_i_love_this": "Music creation software leader. Live is iconic. Culture of music + tech done right.",
+      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-18"
+    },
+    {
+      "name": "Splice",
+      "url": "https://splice.com",
+      "why_i_love_this": "Music creation + collaboration platform. Bridging creators with modern tooling.",
+      "attraction_types": ["product_love", "personal_connection"],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-18"
+    }
+  ]
+}

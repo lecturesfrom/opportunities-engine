@@ -1,0 +1,18 @@
+"""Sanity tests for config loading."""
+from opportunities_engine.config import DEFAULT_TARGET_TITLES, settings
+
+
+def test_target_titles_loaded():
+    assert len(settings.target_titles) >= 10
+    assert "GTM Engineer" in settings.target_titles
+    assert "Founding GTM Engineer" in settings.target_titles
+
+
+def test_paths_anchored_to_repo():
+    assert settings.repo_root.name == "opportunities-engine"
+    assert settings.database_path.parent.name == "data"
+    assert settings.chroma_path.parent.name == "data"
+
+
+def test_default_titles_constant():
+    assert len(DEFAULT_TARGET_TITLES) == len(settings.target_titles)
