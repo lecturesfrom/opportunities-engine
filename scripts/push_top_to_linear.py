@@ -70,8 +70,18 @@ def make_title(job: dict) -> str:
 
 
 def make_description(job: dict) -> str:
+    from opportunities_engine.framing.why_interesting import (
+        generate_why_interesting,
+        WHY_INTERESTING_HEADING,
+    )
+    blurb = generate_why_interesting(job)
     return "\n".join(
         [
+            f"**{WHY_INTERESTING_HEADING}**",
+            "",
+            blurb,
+            "",
+            "---",
             f"**Score:** {job.get('similarity','')}",
             f"**Source:** {job.get('source','')}",
             f"**Location:** {job.get('location','')}",
