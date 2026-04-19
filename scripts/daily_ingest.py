@@ -65,19 +65,33 @@ def ingest_ats(store: JobStore, client: ATSClient | None = None) -> int:
     return new_count
 
 
-def ingest_jobspy(store: JobStore, results_per_term: int = 30, hours_old: int = 72) -> int:
-    """Scrape JobSpy sources (Indeed, Google). Returns count of NEW jobs."""
+def ingest_jobspy(
+    store: JobStore,
+    results_per_term: int = 30,
+    hours_old: int = 72,
+    linkedin_lite: bool = False,
+    linkedin_terms_cap: int = 3,
+    linkedin_results_cap: int = 8,
+) -> int:
+    """Scrape JobSpy sources. Default: Indeed+Google. Optional: LinkedIn-lite."""
     new_count = 0
     seen_count = 0
 
-    for job in scrape_all(results_per_term=results_per_term, hours_old=hours_old):
+    for job in scrape_all(
+        results_per_term=results_per_term,
+        hours_old=hours_old,
+        linkedin_lite=linkedin_lite,
+        linkedin_terms_cap=linkedin_terms_cap,
+        linkedin_results_cap=linkedin_results_cap,
+    ):
         is_new = store.upsert_job(job)
         if is_new:
             new_count += 1
         else:
             seen_count += 1
 
-    console.print(f"  JobSpy: {new_count} new, {seen_count} seen")
+    mode = "JobSpy (Indeed+Google+LinkedIn-lite)" if linkedin_lite else "JobSpy (Indeed+Google)"
+    console.print(f"  {mode}: {new_count} new, {seen_count} seen")
     return new_count
 
 
@@ -111,7 +125,18 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 @click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion (ATS only)")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
-def main(skip_ats: bool, skip_jobspy: bool, hours: int, results: int) -> None:
+@click.option("--linkedin-lite", is_flag=True, help="Manual capped LinkedIn sweep (easy wins)")
+@click.option("--linkedin-terms-cap", default=3, help="Max terms for LinkedIn-lite")
+@click.option("--linkedin-results-cap", default=8, help="Max results per term for LinkedIn-lite")
+def main(
+    skip_ats: bool,
+    skip_jobspy: bool,
+    hours: int,
+    results: int,
+    linkedin_lite: bool,
+    linkedin_terms_cap: int,
+    linkedin_results_cap: int,
+) -> None:
     """Run the daily ingestion pipeline."""
     console.print("[bold cyan]🔄 Opportunities Engine — Daily Ingest[/bold cyan]")
     console.print(f"  DB: {settings.database_path}")
@@ -125,8 +150,16 @@ def main(skip_ats: bool, skip_jobspy: bool, hours: int, results: int) -> None:
             console.print()
 
         if not skip_jobspy:
-            console.print("[bold]Phase 2: JobSpy (Indeed + Google)[/bold]")
-            spy_new = ingest_jobspy(store, results_per_term=results, hours_old=hours)
+            phase_title = "Phase 2: JobSpy (Indeed + Google + optional LinkedIn-lite)"
+            console.print(f"[bold]{phase_title}[/bold]")
+            spy_new = ingest_jobspy(
+                store,
+                results_per_term=results,
+                hours_old=hours,
+                linkedin_lite=linkedin_lite,
+                linkedin_terms_cap=linkedin_terms_cap,
+                linkedin_results_cap=linkedin_results_cap,
+            )
             console.print()
 
         # Summary

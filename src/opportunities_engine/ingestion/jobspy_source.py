@@ -1,7 +1,8 @@
-"""JobSpy-based scraper for Indeed and Google Jobs.
+"""JobSpy-based scraper for non-ATS job boards.
 
-LinkedIn is intentionally excluded — it's rate-limited and GTM roles
-are better captured via ATS APIs. This is the fallback/catch-all.
+Default mode uses Indeed + Google only.
+LinkedIn is available in *manual capped* mode via `linkedin_lite=True`
+for targeted easy-win sweeps.
 """
 from __future__ import annotations
 import hashlib
@@ -31,7 +32,15 @@ SEARCH_TERMS = [
     "Founding Product Engineer",
 ]
 
-SITES = ["indeed", "google"]  # NOT linkedin — too rate-limited for automated use
+SITES = ["indeed", "google"]  # default
+LINKEDIN_LITE_TERMS = [
+    "GTM Engineer",
+    "Go-To-Market Engineer",
+    "Forward Deployed Engineer",
+    "Solutions Engineer",
+    "Sales Engineer",
+    "RevOps Engineer",
+]
 
 
 def _normalize_row(row: pd.Series) -> dict:
@@ -75,15 +84,27 @@ def scrape_all(
     hours_old: int = 72,
     location: str = "remote",
     country: str = "usa",
+    linkedin_lite: bool = False,
+    linkedin_terms_cap: int = 3,
+    linkedin_results_cap: int = 8,
 ) -> Iterator[dict]:
-    """Scrape all search terms across all sites, yielding normalized job dicts.
-    
-    Yields one dict at a time so the caller can upsert immediately
-    without buffering the entire result set.
+    """Scrape search terms across selected sites, yielding normalized job dicts.
+
+    Default: Indeed + Google only.
+    LinkedIn-lite mode (manual): include LinkedIn with strict caps.
     """
     terms = search_terms or SEARCH_TERMS
-    site_list = sites or SITES
-    
+    site_list = list(sites or SITES)
+
+    if linkedin_lite:
+        # manual capped mode for quick-win sweeps
+        if "linkedin" not in site_list:
+            site_list.append("linkedin")
+        if search_terms is None:
+            terms = LINKEDIN_LITE_TERMS[:linkedin_terms_cap]
+        # keep linkedin runs small to reduce rate-limit fragility
+        results_per_term = min(results_per_term, linkedin_results_cap)
+
     for term in terms:
         try:
             df = scrape_jobs(
@@ -98,7 +119,6 @@ def scrape_all(
                 for _, row in df.iterrows():
                     yield _normalize_row(row)
         except Exception as e:
-            # Log but don't crash — one term failing shouldn't stop the whole run
             print(f"[jobspy] Error scraping '{term}': {e}")
             continue
 
