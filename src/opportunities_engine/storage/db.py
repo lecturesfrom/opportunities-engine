@@ -8,8 +8,15 @@ from typing import Any
 
 import duckdb
 
+from opportunities_engine.storage.migrate import run_migrations
 
-_SCHEMA_SQL = """
+# Base schema for the four original tables — kept as a fallback for
+# databases that haven't been migrated yet.  The migration runner
+# (run_migrations) handles everything else, including the new tables
+# (job_sources, events, scores, company_attractions) and the archive
+# schema.
+
+_BASE_SCHEMA_SQL = """
 CREATE SEQUENCE IF NOT EXISTS job_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS company_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS app_id_seq START 1;
@@ -140,7 +147,10 @@ class JobStore:
     # ------------------------------------------------------------------
     def _init_schema(self) -> None:
         assert self.conn is not None
-        self.conn.execute(_SCHEMA_SQL)
+        # 1. Bootstrap base tables (jobs, companies, applications, skill_gaps)
+        self.conn.execute(_BASE_SCHEMA_SQL)
+        # 2. Run migrations (creates new tables, indexes, archive, etc.)
+        run_migrations(self.conn)
 
     # ------------------------------------------------------------------
     # Job helpers
