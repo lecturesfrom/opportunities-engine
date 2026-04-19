@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "description": "Keegan's dream companies — reverse-engineered preference system",
+    "description": "Keegan's dream companies \u2014 reverse-engineered preference system",
     "attraction_taxonomy": [
       "mission_alignment",
       "design_aesthetic",
@@ -10,7 +10,13 @@
       "market_timing",
       "personal_connection"
     ],
-    "status_pipeline": ["researching", "targeting_team", "outreach", "nurturing", "active_opportunity"],
+    "status_pipeline": [
+      "researching",
+      "targeting_team",
+      "outreach",
+      "nurturing",
+      "active_opportunity"
+    ],
     "created": "2026-04-18"
   },
   "companies": [
@@ -18,17 +24,25 @@
       "name": "PostHog",
       "url": "https://posthog.com",
       "why_i_love_this": "Job descriptions are the coolest I've ever seen. Love their mentality, mission, and how they approach everything. Transparent, weird in the best way, product-led.",
-      "attraction_types": ["team_culture", "product_love", "innovation_tech"],
+      "attraction_types": [
+        "team_culture",
+        "product_love",
+        "innovation_tech"
+      ],
       "priority": "tier_1",
       "status": "researching",
       "added": "2026-04-18",
-      "notes": "Probably THE dream. Study how they write job descriptions — that's a signal for culture fit."
+      "notes": "Probably THE dream. Study how they write job descriptions \u2014 that's a signal for culture fit."
     },
     {
       "name": "Vercel",
       "url": "https://vercel.com",
       "why_i_love_this": "Developer-first, incredible design, product I actually use and love. Infrastructure that feels like magic.",
-      "attraction_types": ["design_aesthetic", "product_love", "innovation_tech"],
+      "attraction_types": [
+        "design_aesthetic",
+        "product_love",
+        "innovation_tech"
+      ],
       "priority": "tier_1",
       "status": "researching",
       "added": "2026-04-18"
@@ -37,7 +51,11 @@
       "name": "Teenage Engineering",
       "url": "https://teenage.engineering",
       "why_i_love_this": "Design and aesthetic mastery. Physical products that feel like art. Cross-section of hardware + music + obsessive craft.",
-      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "attraction_types": [
+        "design_aesthetic",
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_1",
       "status": "researching",
       "added": "2026-04-18",
@@ -47,7 +65,10 @@
       "name": "Avid (Pro Tools)",
       "url": "https://www.avid.com",
       "why_i_love_this": "Pro Tools is the industry standard for audio. Music creation tooling is my passion zone.",
-      "attraction_types": ["product_love", "personal_connection"],
+      "attraction_types": [
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_2",
       "status": "researching",
       "added": "2026-04-18"
@@ -56,7 +77,11 @@
       "name": "Moog Music",
       "url": "https://www.moogmusic.com",
       "why_i_love_this": "Synthesizers are art. Legendary brand with deep craft in hardware + sound design.",
-      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "attraction_types": [
+        "design_aesthetic",
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_2",
       "status": "researching",
       "added": "2026-04-18"
@@ -64,18 +89,26 @@
     {
       "name": "Suno",
       "url": "https://suno.com",
-      "why_i_love_this": "AI music generation — the cutting edge of what I care about (AI + music).",
-      "attraction_types": ["innovation_tech", "product_love", "personal_connection"],
+      "why_i_love_this": "AI music generation \u2014 the cutting edge of what I care about (AI + music).",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_1",
       "status": "researching",
       "added": "2026-04-18",
-      "notes": "Category: music generation/creation — user said 'any sort of music generation or creation'"
+      "notes": "Category: music generation/creation \u2014 user said 'any sort of music generation or creation'"
     },
     {
       "name": "Udio",
       "url": "https://www.udio.com",
-      "why_i_love_this": "AI music generation platform — same category as Suno, cutting edge.",
-      "attraction_types": ["innovation_tech", "product_love", "personal_connection"],
+      "why_i_love_this": "AI music generation platform \u2014 same category as Suno, cutting edge.",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_1",
       "status": "researching",
       "added": "2026-04-18"
@@ -84,7 +117,11 @@
       "name": "Ableton",
       "url": "https://www.ableton.com",
       "why_i_love_this": "Music creation software leader. Live is iconic. Culture of music + tech done right.",
-      "attraction_types": ["design_aesthetic", "product_love", "personal_connection"],
+      "attraction_types": [
+        "design_aesthetic",
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_2",
       "status": "researching",
       "added": "2026-04-18"
@@ -93,10 +130,267 @@
       "name": "Splice",
       "url": "https://splice.com",
       "why_i_love_this": "Music creation + collaboration platform. Bridging creators with modern tooling.",
-      "attraction_types": ["product_love", "personal_connection"],
+      "attraction_types": [
+        "product_love",
+        "personal_connection"
+      ],
       "priority": "tier_2",
       "status": "researching",
       "added": "2026-04-18"
+    },
+    {
+      "name": "Obsidian",
+      "url": "https://obsidian.md",
+      "why_i_love_this": "Knowledge/workflow product I actively admire; strong product craft.",
+      "attraction_types": [
+        "product_love",
+        "design_aesthetic"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Hugging Face",
+      "url": "https://huggingface.co",
+      "why_i_love_this": "Open model ecosystem and community-first AI platform.",
+      "attraction_types": [
+        "innovation_tech",
+        "mission_alignment"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Neon",
+      "url": "https://neon.tech",
+      "why_i_love_this": "Serverless Postgres with elite DX and technical clarity.",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Magic Patterns",
+      "url": "https://magicpatterns.com",
+      "why_i_love_this": "AI-native product workflow/design tooling vibe is strong.",
+      "attraction_types": [
+        "design_aesthetic",
+        "innovation_tech"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Greptile",
+      "url": "https://greptile.com",
+      "why_i_love_this": "Code understanding/dev tooling with sharp product direction.",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Liquidsoap",
+      "url": "https://www.liquidsoap.info",
+      "why_i_love_this": "Audio tooling / creative stack alignment.",
+      "attraction_types": [
+        "personal_connection",
+        "innovation_tech"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Firecrawl",
+      "url": "https://firecrawl.dev",
+      "why_i_love_this": "Core infra for web data extraction; useful + respected product.",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Twitch",
+      "url": "https://www.twitch.tv",
+      "why_i_love_this": "Creator ecosystem and product affinity.",
+      "attraction_types": [
+        "product_love",
+        "personal_connection"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Bluesky",
+      "url": "https://bsky.app",
+      "why_i_love_this": "Protocol-driven social product with strong mission narrative.",
+      "attraction_types": [
+        "mission_alignment",
+        "innovation_tech"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Chroma",
+      "url": "https://www.trychroma.com",
+      "why_i_love_this": "AI-native infra with relevance to current stack.",
+      "attraction_types": [
+        "innovation_tech",
+        "product_love"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Ref.tools",
+      "url": "https://ref.tools",
+      "why_i_love_this": "Tooling ecosystem fit and curiosity.",
+      "attraction_types": [
+        "innovation_tech"
+      ],
+      "priority": "tier_3",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "orchids.app",
+      "url": "https://orchids.app",
+      "why_i_love_this": "Bookmark attraction / product curiosity.",
+      "attraction_types": [
+        "product_love"
+      ],
+      "priority": "tier_3",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Fireworks AI",
+      "url": "https://fireworks.ai",
+      "why_i_love_this": "Inference infra and model-serving edge.",
+      "attraction_types": [
+        "innovation_tech"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "brand.dev",
+      "url": "https://brand.dev",
+      "why_i_love_this": "Brand/product tooling curiosity.",
+      "attraction_types": [
+        "design_aesthetic",
+        "product_love"
+      ],
+      "priority": "tier_3",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Mercury",
+      "url": "https://mercury.com",
+      "why_i_love_this": "Startup banking product quality + founder ecosystem.",
+      "attraction_types": [
+        "product_love",
+        "design_aesthetic"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Hex",
+      "url": "https://hex.tech",
+      "why_i_love_this": "Top-tier company for data/product experience; strong fit.",
+      "attraction_types": [
+        "product_love",
+        "innovation_tech"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Parallel Web Systems",
+      "url": "https://parallel.ai",
+      "why_i_love_this": "Frontier systems/company curiosity.",
+      "attraction_types": [
+        "innovation_tech"
+      ],
+      "priority": "tier_3",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Deepline",
+      "url": "https://deepline.ai",
+      "why_i_love_this": "AI product curiosity / potential GTM-adjacent fit.",
+      "attraction_types": [
+        "innovation_tech"
+      ],
+      "priority": "tier_3",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Jobright.ai",
+      "url": "https://jobright.ai",
+      "why_i_love_this": "Meta-space company in job search automation.",
+      "attraction_types": [
+        "innovation_tech"
+      ],
+      "priority": "tier_2",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
+    },
+    {
+      "name": "Clay",
+      "url": "https://www.clay.com",
+      "why_i_love_this": "Benchmark company archetype (where Clay was in 2022).",
+      "attraction_types": [
+        "product_love",
+        "innovation_tech"
+      ],
+      "priority": "tier_1",
+      "status": "researching",
+      "added": "2026-04-19",
+      "notes": "Added from user bookmark/company dump."
     }
   ]
 }
