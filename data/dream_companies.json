@@ -199,9 +199,12 @@
         "product_love"
       ],
       "priority": "tier_2",
-      "status": "researching",
+      "status": "active_opportunity",
       "added": "2026-04-19",
-      "notes": "Added from user bookmark/company dump."
+      "notes": "Applied. Positioning: adjacent but accelerating. Aesthetic pull is real.",
+      "active_role": "Growth Engineer",
+      "active_role_url": "https://www.greptile.com/careers/open?ashby_jid=2ec34631-e167-4f28-9485-438aa1e19de2",
+      "discovery_path": "X/social \u2192 Ryan Carson (AMP) \u2192 product trial \u2192 role listing"
     },
     {
       "name": "Liquidsoap",

@@ -43,6 +43,25 @@ LINKEDIN_LITE_TERMS = [
 ]
 
 
+def _coerce_timestamp(val) -> datetime | None:
+    """Convert a value from JobSpy (pd.Timestamp, float epoch, str, or None) to a Python datetime."""
+    if val is None or (isinstance(val, float) and val != val):  # NaN check
+        return None
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, pd.Timestamp):
+        return val.to_pydatetime()
+    if isinstance(val, (int, float)):
+        # Treat as Unix epoch seconds
+        return datetime.utcfromtimestamp(val)
+    if isinstance(val, str):
+        try:
+            return pd.Timestamp(val).to_pydatetime()
+        except Exception:
+            return None
+    return None
+
+
 def _normalize_row(row: pd.Series) -> dict:
     """Convert a JobSpy DataFrame row to our normalized job dict."""
     url = str(row.get("job_url", "") or row.get("url", "") or "")
@@ -60,7 +79,7 @@ def _normalize_row(row: pd.Series) -> dict:
         "salary_min": row.get("min_amount"),
         "salary_max": row.get("max_amount"),
         "salary_currency": str(row.get("currency", "USD")),
-        "date_posted": row.get("date_posted"),
+        "date_posted": _coerce_timestamp(row.get("date_posted")),
         "is_remote": bool(row.get("is_remote", False)),
         "job_type": str(row.get("job_type", "")),
         "department": "",

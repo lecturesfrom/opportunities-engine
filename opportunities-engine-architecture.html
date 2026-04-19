@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opportunities Engine Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      margin-bottom: 2rem;
+    }
+    
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      background: #22d3ee;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+    
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      margin-left: 1.75rem;
+    }
+    
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    
+    svg {
+      width: 100%;
+      min-width: 900px;
+      display: block;
+    }
+    
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    
+    .card h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    
+    .card ul {
+      list-style: none;
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+    
+    .card li {
+      margin-bottom: 0.375rem;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>Opportunities Engine</h1>
+      </div>
+      <p class="subtitle">GTM Engineer job pipeline — ingestion → ranking → delivery → funnel</p>
+    </div>
+
+    <!-- Main Diagram -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 1100 980">
+        <!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+          </marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+          </marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ============================================================
+             LAYER 1: INGESTION (Top)
+             ============================================================ -->
+        
+        <!-- Ingestion boundary -->
+        <rect x="30" y="20" width="1040" height="190" rx="12" fill="rgba(8, 51, 68, 0.08)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="42" y="40" fill="#22d3ee" font-size="10" font-weight="600">INGESTION LAYER</text>
+
+        <!-- ATS APIs -->
+        <rect x="50" y="55" width="200" height="140" rx="8" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="150" y="78" fill="white" font-size="12" font-weight="600" text-anchor="middle">ATS APIs</text>
+        <text x="150" y="96" fill="#94a3b8" font-size="9" text-anchor="middle">Greenhouse / Lever / Ashby</text>
+        <line x1="65" y1="108" x2="235" y2="108" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="150" y="124" fill="#34d399" font-size="8" text-anchor="middle">✅ Wired &amp; Verified</text>
+        <text x="150" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">20 verified slugs</text>
+        <text x="150" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">29 unverified (404)</text>
+        <text x="150" y="172" fill="#fb7185" font-size="7" text-anchor="middle">⚠ Slug guessing = fragile</text>
+
+        <!-- JobSpy -->
+        <rect x="280" y="55" width="180" height="140" rx="8" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="370" y="78" fill="white" font-size="12" font-weight="600" text-anchor="middle">JobSpy</text>
+        <text x="370" y="96" fill="#94a3b8" font-size="9" text-anchor="middle">Indeed + Google for Jobs</text>
+        <line x1="295" y1="108" x2="445" y2="108" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="370" y="124" fill="#34d399" font-size="8" text-anchor="middle">✅ Wired</text>
+        <text x="370" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">13 GTM search terms</text>
+        <text x="370" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">LinkedIn: OFF (rate-limit)</text>
+        <text x="370" y="172" fill="#94a3b8" font-size="8" text-anchor="middle">Source priority: 2</text>
+
+        <!-- YC Seed -->
+        <rect x="490" y="55" width="180" height="140" rx="8" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="580" y="78" fill="white" font-size="12" font-weight="600" text-anchor="middle">YC Seed</text>
+        <text x="580" y="96" fill="#94a3b8" font-size="9" text-anchor="middle">W23 → S25 Batches</text>
+        <line x1="505" y1="108" x2="655" y2="108" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="580" y="124" fill="#34d399" font-size="8" text-anchor="middle">✅ Wired</text>
+        <text x="580" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">Probe → ATS slug discovery</text>
+        <text x="580" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">→ seed_companies.json</text>
+        <text x="580" y="172" fill="#fbbf24" font-size="7" text-anchor="middle">💡 Add YC WorkAtAStartup API</text>
+
+        <!-- HN Who's Hiring -->
+        <rect x="700" y="55" width="170" height="140" rx="8" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="785" y="78" fill="white" font-size="12" font-weight="600" text-anchor="middle">HN Who's Hiring</text>
+        <text x="785" y="96" fill="#94a3b8" font-size="9" text-anchor="middle">Algolia API (free)</text>
+        <line x1="715" y1="108" x2="855" y2="108" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="785" y="124" fill="#fbbf24" font-size="8" text-anchor="middle">⚠ Built, NOT wired</text>
+        <text x="785" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">11 tests passing</text>
+        <text x="785" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">Not called from daily_ingest</text>
+        <text x="785" y="172" fill="#94a3b8" font-size="8" text-anchor="middle">Monthly signal source</text>
+
+        <!-- X/Twitter (blocked) -->
+        <rect x="900" y="55" width="155" height="140" rx="8" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="977" y="78" fill="white" font-size="12" font-weight="600" text-anchor="middle">X / Twitter</text>
+        <text x="977" y="96" fill="#94a3b8" font-size="9" text-anchor="middle">Browser cookies</text>
+        <line x1="915" y1="108" x2="1040" y2="108" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="977" y="124" fill="#fb7185" font-size="8" text-anchor="middle">🔒 Blocked on credentials</text>
+        <text x="977" y="140" fill="#94a3b8" font-size="8" text-anchor="middle">Needs AUTH_TOKEN + CT0</text>
+        <text x="977" y="155" fill="#94a3b8" font-size="8" text-anchor="middle">Free (no $100 API)</text>
+        <text x="977" y="172" fill="#94a3b8" font-size="8" text-anchor="middle">Reminder: 4/20 10AM</text>
+
+        <!-- Arrows: Ingestion → DuckDB -->
+        <line x1="150" y1="195" x2="150" y2="268" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="370" y1="195" x2="370" y2="268" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="580" y1="195" x2="580" y2="268" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="785" y1="195" x2="785" y2="268" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowhead-emerald)"/>
+        <text x="150" y="244" fill="#94a3b8" font-size="8" text-anchor="middle">upsert</text>
+        <text x="370" y="244" fill="#94a3b8" font-size="8" text-anchor="middle">upsert</text>
+        <text x="580" y="244" fill="#94a3b8" font-size="8" text-anchor="middle">seed→ATS</text>
+        <text x="785" y="244" fill="#94a3b8" font-size="8" text-anchor="middle">NOT YET</text>
+
+        <!-- ============================================================
+             LAYER 2: STORAGE
+             ============================================================ -->
+        
+        <!-- DuckDB -->
+        <rect x="80" y="270" width="700" height="80" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="430" y="295" fill="white" font-size="13" font-weight="600" text-anchor="middle">DuckDB — jobs.duckdb</text>
+        <text x="180" y="318" fill="#a78bfa" font-size="8" text-anchor="middle">jobs ✅</text>
+        <text x="300" y="318" fill="#94a3b8" font-size="8" text-anchor="middle">companies (sparse)</text>
+        <text x="450" y="318" fill="#94a3b8" font-size="8" text-anchor="middle">applications (empty)</text>
+        <text x="600" y="318" fill="#94a3b8" font-size="8" text-anchor="middle">skill_gaps (empty)</text>
+        <text x="180" y="336" fill="#94a3b8" font-size="7" text-anchor="middle">single-file, no concurrency</text>
+        <text x="450" y="336" fill="#fb7185" font-size="7" text-anchor="middle">⚠ Empty tables = funnel not built</text>
+
+        <!-- ranked_jobs.json -->
+        <rect x="820" y="270" width="220" height="80" rx="6" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="930" y="295" fill="white" font-size="11" font-weight="600" text-anchor="middle">ranked_jobs.json</text>
+        <text x="930" y="315" fill="#94a3b8" font-size="9" text-anchor="middle">Top N scored roles</text>
+        <text x="930" y="335" fill="#94a3b8" font-size="8" text-anchor="middle">30 jobs (current run)</text>
+
+        <!-- Arrow: DuckDB → ranked_jobs.json -->
+        <line x1="780" y1="310" x2="818" y2="310" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <text x="799" y="302" fill="#94a3b8" font-size="7" text-anchor="middle">rank.py</text>
+
+        <!-- ============================================================
+             LAYER 3: RANKING ENGINE
+             ============================================================ -->
+        
+        <!-- Ranker boundary -->
+        <rect x="30" y="370" width="700" height="180" rx="12" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="42" y="390" fill="#34d399" font-size="10" font-weight="600">RANKING ENGINE — semantic/ranker.py</text>
+
+        <!-- Step 1: US/Remote Gate -->
+        <rect x="50" y="400" width="120" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="110" y="420" fill="white" font-size="10" font-weight="600" text-anchor="middle">1. US Gate</text>
+        <text x="110" y="436" fill="#94a3b8" font-size="8" text-anchor="middle">Hard reject</text>
+        <text x="110" y="448" fill="#94a3b8" font-size="7" text-anchor="middle">non-US locations</text>
+
+        <!-- Step 2: Exclude -->
+        <rect x="190" y="400" width="120" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="250" y="420" fill="white" font-size="10" font-weight="600" text-anchor="middle">2. Exclude</text>
+        <text x="250" y="436" fill="#94a3b8" font-size="8" text-anchor="middle">Healthcare, teaching</text>
+        <text x="250" y="448" fill="#94a3b8" font-size="7" text-anchor="middle">warehouse, accounting</text>
+
+        <!-- Step 3: Include -->
+        <rect x="330" y="400" width="120" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="390" y="420" fill="white" font-size="10" font-weight="600" text-anchor="middle">3. Include</text>
+        <text x="390" y="436" fill="#94a3b8" font-size="8" text-anchor="middle">66 titles + 14 regex</text>
+        <text x="390" y="448" fill="#94a3b8" font-size="7" text-anchor="middle">GTM pattern matching</text>
+
+        <!-- Step 4: Dedup -->
+        <rect x="470" y="400" width="120" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="530" y="420" fill="white" font-size="10" font-weight="600" text-anchor="middle">4. Dedup</text>
+        <text x="530" y="436" fill="#94a3b8" font-size="8" text-anchor="middle">(company, title)</text>
+        <text x="530" y="448" fill="#94a3b8" font-size="7" text-anchor="middle">Prefer ATS over JobSpy</text>
+
+        <!-- Step 5: TF-IDF Score -->
+        <rect x="50" y="475" width="200" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="150" y="495" fill="white" font-size="10" font-weight="600" text-anchor="middle">5. TF-IDF Scoring</text>
+        <text x="150" y="511" fill="#fbbf24" font-size="8" text-anchor="middle">⚠ TEMPORARY — no semantic match</text>
+        <text x="150" y="523" fill="#94a3b8" font-size="7" text-anchor="middle">sklearn cosine similarity</text>
+
+        <!-- Step 6: Bonus + Sort -->
+        <rect x="280" y="475" width="200" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="380" y="495" fill="white" font-size="10" font-weight="600" text-anchor="middle">6. Bonus + Sort</text>
+        <text x="380" y="511" fill="#94a3b8" font-size="8" text-anchor="middle">+0.08 core GTM / +0.05 founding</text>
+        <text x="380" y="523" fill="#94a3b8" font-size="7" text-anchor="middle">Threshold: min 0.16</text>
+
+        <!-- Arrow: DuckDB → Ranker -->
+        <line x1="430" y1="350" x2="430" y2="368" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        
+        <!-- Internal ranker arrows -->
+        <line x1="170" y1="427" x2="188" y2="427" stroke="#64748b" stroke-width="1" marker-end="url(#arrowhead)"/>
+        <line x1="310" y1="427" x2="328" y2="427" stroke="#64748b" stroke-width="1" marker-end="url(#arrowhead)"/>
+        <line x1="450" y1="427" x2="468" y2="427" stroke="#64748b" stroke-width="1" marker-end="url(#arrowhead)"/>
+        <line x1="530" y1="455" x2="150" y2="473" stroke="#64748b" stroke-width="1" marker-end="url(#arrowhead)"/>
+        <line x1="250" y1="502" x2="278" y2="502" stroke="#64748b" stroke-width="1" marker-end="url(#arrowhead)"/>
+
+        <!-- ChromaDB (unused) -->
+        <rect x="520" y="475" width="190" height="55" rx="6" fill="rgba(76, 29, 149, 0.15)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="615" y="495" fill="#a78bfa" font-size="10" font-weight="600" text-anchor="middle">ChromaDB</text>
+        <text x="615" y="511" fill="#94a3b8" font-size="8" text-anchor="middle">sentence-transformers</text>
+        <text x="615" y="523" fill="#fb7185" font-size="7" text-anchor="middle">🔒 EXISTS but UNUSED</text>
+
+        <!-- Dashed upgrade arrow -->
+        <line x1="250" y1="502" x2="518" y2="502" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-violet)"/>
+        <text x="385" y="496" fill="#a78bfa" font-size="7" text-anchor="middle">future upgrade</text>
+
+        <!-- ============================================================
+             LAYER 4: FRAMING + DELIVERY
+             ============================================================ -->
+        
+        <!-- Why Interesting -->
+        <rect x="50" y="590" width="220" height="75" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="160" y="612" fill="white" font-size="11" font-weight="600" text-anchor="middle">💡 Why Interesting</text>
+        <text x="160" y="630" fill="#94a3b8" font-size="9" text-anchor="middle">Template-based framing</text>
+        <text x="160" y="648" fill="#34d399" font-size="8" text-anchor="middle">✅ 20 tests — just shipped</text>
+
+        <!-- Discord Digest -->
+        <rect x="300" y="590" width="200" height="75" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="400" y="612" fill="white" font-size="11" font-weight="600" text-anchor="middle">📡 Discord Digest</text>
+        <text x="400" y="630" fill="#94a3b8" font-size="9" text-anchor="middle">Webhook delivery</text>
+        <text x="400" y="648" fill="#fbbf24" font-size="8" text-anchor="middle">⚠ Needs webhook URL</text>
+
+        <!-- Manual Drop -->
+        <rect x="530" y="590" width="180" height="75" rx="6" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="620" y="612" fill="white" font-size="11" font-weight="600" text-anchor="middle">🪂 Manual Drop</text>
+        <text x="620" y="630" fill="#94a3b8" font-size="9" text-anchor="middle">/drop URL → Linear</text>
+        <text x="620" y="648" fill="#fb7185" font-size="8" text-anchor="middle">🔒 Not built yet</text>
+
+        <!-- LinkedIn Email -->
+        <rect x="740" y="590" width="180" height="75" rx="6" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="830" y="612" fill="white" font-size="11" font-weight="600" text-anchor="middle">📧 LinkedIn Email</text>
+        <text x="830" y="630" fill="#94a3b8" font-size="9" text-anchor="middle">IMAP ingestion</text>
+        <text x="830" y="648" fill="#fb7185" font-size="8" text-anchor="middle">🔒 Not built yet</text>
+
+        <!-- Arrows: ranked_jobs → framing/delivery -->
+        <line x1="930" y1="350" x2="930" y2="560" stroke="#a78bfa" stroke-width="1.5"/>
+        <line x1="930" y1="560" x2="160" y2="588" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrowhead-violet)"/>
+        <line x1="930" y1="560" x2="400" y2="588" stroke="#fb923c" stroke-width="1" marker-end="url(#arrowhead-orange)"/>
+
+        <!-- ============================================================
+             LAYER 5: LINEAR (Your Workspace)
+             ============================================================ -->
+        
+        <!-- Linear boundary -->
+        <rect x="30" y="700" width="1040" height="250" rx="12" fill="rgba(120, 53, 15, 0.06)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="42" y="720" fill="#fbbf24" font-size="11" font-weight="600">LINEAR — YOUR WORKSPACE (Team: regripping4L)</text>
+
+        <!-- Active Applications -->
+        <rect x="50" y="740" width="280" height="190" rx="8" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="190" y="763" fill="white" font-size="13" font-weight="600" text-anchor="middle">Active Applications</text>
+        <text x="190" y="781" fill="#94a3b8" font-size="9" text-anchor="middle">25 issues • Priority 2 (Medium)</text>
+        <line x1="65" y1="793" x2="315" y2="793" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="190" y="810" fill="#34d399" font-size="8" text-anchor="middle">✅ Wired from push_top_to_linear.py</text>
+        <text x="190" y="828" fill="#94a3b8" font-size="8" text-anchor="middle">State: Todo → In Progress → Done</text>
+        <text x="190" y="846" fill="#94a3b8" font-size="8" text-anchor="middle">Each card has:</text>
+        <text x="190" y="862" fill="#22d3ee" font-size="8" text-anchor="middle">💡 Why Interesting blurb</text>
+        <text x="190" y="878" fill="#94a3b8" font-size="8" text-anchor="middle">Score + Source + Location + URL</text>
+        <text x="190" y="896" fill="#94a3b8" font-size="8" text-anchor="middle">Tags: manual-drop (planned)</text>
+        <text x="190" y="914" fill="#fb7185" font-size="7" text-anchor="middle">⚠ No funnel tracking after push</text>
+
+        <!-- Dream Companies -->
+        <rect x="370" y="740" width="280" height="190" rx="8" fill="rgba(8, 51, 68, 0.3)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="510" y="763" fill="white" font-size="13" font-weight="600" text-anchor="middle">Dream Companies</text>
+        <text x="510" y="781" fill="#94a3b8" font-size="9" text-anchor="middle">29 backlog • No auto-routing</text>
+        <line x1="385" y1="793" x2="635" y2="793" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="510" y="810" fill="#fbbf24" font-size="8" text-anchor="middle">⚠ NOT wired — manual only</text>
+        <text x="510" y="828" fill="#94a3b8" font-size="8" text-anchor="middle">28 in dream_companies.json</text>
+        <text x="510" y="846" fill="#94a3b8" font-size="8" text-anchor="middle">Tier 1/2/3 attraction taxonomy</text>
+        <text x="510" y="862" fill="#94a3b8" font-size="8" text-anchor="middle">6 attraction dimensions</text>
+        <text x="510" y="878" fill="#94a3b8" font-size="8" text-anchor="middle">Pattern: craft + design +</text>
+        <text x="510" y="894" fill="#94a3b8" font-size="8" text-anchor="middle">creative/audio tooling</text>
+        <text x="510" y="914" fill="#fb7185" font-size="7" text-anchor="middle">⚠ No auto-routing from ranker</text>
+
+        <!-- Freelance & 1099 -->
+        <rect x="690" y="740" width="220" height="190" rx="8" fill="rgba(120, 53, 15, 0.2)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="800" y="763" fill="white" font-size="13" font-weight="600" text-anchor="middle">Freelance &amp; 1099</text>
+        <text x="800" y="781" fill="#94a3b8" font-size="9" text-anchor="middle">0 issues</text>
+        <line x1="705" y1="793" x2="895" y2="793" stroke="#1e293b" stroke-width="0.5"/>
+        <text x="800" y="810" fill="#fb7185" font-size="8" text-anchor="middle">🔒 No code routes here</text>
+        <text x="800" y="828" fill="#94a3b8" font-size="8" text-anchor="middle">Kivira.Health (active)</text>
+        <text x="800" y="846" fill="#94a3b8" font-size="8" text-anchor="middle">Lucidtrust.AI (proposed)</text>
+        <text x="800" y="864" fill="#94a3b8" font-size="8" text-anchor="middle">No 1099/contract classifier</text>
+        <text x="800" y="882" fill="#94a3b8" font-size="8" text-anchor="middle">Project UUID exists</text>
+
+        <!-- Arrow: Framing → Linear Active -->
+        <line x1="160" y1="665" x2="190" y2="738" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="162" y="700" fill="#34d399" font-size="7">push_top_to_linear.py</text>
+
+        <!-- Arrow: Discord digest → you -->
+        <line x1="400" y1="665" x2="400" y2="690" stroke="#fb923c" stroke-width="1.5"/>
+        <path d="M 400 690 L 400 700 Q 400 710 410 710 L 930 710 Q 940 710 940 720 L 940 738" fill="none" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-orange)"/>
+        <text x="940" y="763" fill="#fb923c" font-size="8" text-anchor="middle">📱 You</text>
+
+        <!-- You (the human) -->
+        <rect x="940" y="740" width="110" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="995" y="763" fill="white" font-size="11" font-weight="600" text-anchor="middle">Keegan</text>
+        <text x="995" y="780" fill="#94a3b8" font-size="8" text-anchor="middle">GTM Engineer</text>
+
+        <!-- Feedback arrow: You → Manual Drop → Pipeline -->
+        <path d="M 995 790 L 995 810 Q 995 820 985 820 L 620 820 Q 610 820 610 810 L 610 665" fill="none" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-rose)"/>
+        <text x="800" y="814" fill="#fb7185" font-size="7">/drop URL (planned)</text>
+
+        <!-- ============================================================
+             LEGEND
+             ============================================================ -->
+        <text x="42" y="968" fill="white" font-size="10" font-weight="600">Status Legend</text>
+        
+        <rect x="42" y="976" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="62" y="984" fill="#94a3b8" font-size="8">✅ Working &amp; Wired</text>
+        
+        <rect x="180" y="976" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="200" y="984" fill="#94a3b8" font-size="8">⚠ Built, Not Wired</text>
+
+        <rect x="330" y="976" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="350" y="984" fill="#94a3b8" font-size="8">🔒 Not Built / Blocked</text>
+
+        <rect x="490" y="976" width="14" height="10" rx="2" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="510" y="984" fill="#94a3b8" font-size="8">⚠ Fragile / Temporary</text>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>What's Working</h3>
+        </div>
+        <ul>
+          <li>• ATS ingestion (3 platforms, 20 verified slugs)</li>
+          <li>• JobSpy (Indeed + Google, 13 GTM terms)</li>
+          <li>• YC Seed discovery (W23→S25 batches)</li>
+          <li>• TF-IDF ranking pipeline (6-step filter)</li>
+          <li>• Linear push to Active Applications (25 cards)</li>
+          <li>• "Why Interesting" framing (20 tests)</li>
+          <li>• Discord digest module (11 tests)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>What's Fragile</h3>
+        </div>
+        <ul>
+          <li>• TF-IDF can't match semantic cousins</li>
+          <li>• 29/49 ATS slugs unverified (guessed)</li>
+          <li>• DuckDB single-file, no concurrency</li>
+          <li>• No scheduling (all manual runs)</li>
+          <li>• LinkedIn off (rate-limit risk)</li>
+          <li>• ChromaDB installed but unused</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>What's Missing</h3>
+        </div>
+        <ul>
+          <li>• HN Who's Hiring (built, not wired)</li>
+          <li>• X/Twitter (blocked on cookies)</li>
+          <li>• Dream Company routing to Linear</li>
+          <li>• Freelance/1099 classifier</li>
+          <li>• Manual-drop channel (/drop URL)</li>
+          <li>• Post-application funnel &amp; analytics</li>
+          <li>• LinkedIn email ingestion (IMAP)</li>
+          <li>• Agent first-email drafts</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+      Opportunities Engine • lecturesfrom/opportunities-engine (private) • 69 tests passing • Built by Hermes
+    </p>
+  </div>
+</body>
+</html>

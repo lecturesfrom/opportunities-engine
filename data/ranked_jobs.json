@@ -15,7 +15,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "United States",
-    "similarity": 0.312
+    "similarity": 0.31
   },
   {
     "title": "Senior Forward Deployed Engineer",
@@ -24,7 +24,7 @@
     "source": "greenhouse",
     "is_remote": true,
     "location": "U.S. Remote",
-    "similarity": 0.272
+    "similarity": 0.27
   },
   {
     "title": "AI Engineer - FDE (Forward Deployed Engineer) - U.S. Federal Sector",
@@ -33,25 +33,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Maryland; Virginia; Washington, D.C.",
-    "similarity": 0.266
-  },
-  {
-    "title": "Sr. Solutions Engineer",
-    "company": "Databricks",
-    "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8450209002",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "Central - United States",
-    "similarity": 0.249
-  },
-  {
-    "title": "Technical Solutions Engineer",
-    "company": "Stripe",
-    "url": "https://stripe.com/jobs/search?gh_jid=7377101",
-    "source": "greenhouse",
-    "is_remote": true,
-    "location": "CA-Remote-British Columbia",
-    "similarity": 0.248
+    "similarity": 0.265
   },
   {
     "title": "Forward Deployed Engineer, v0",
@@ -60,7 +42,25 @@
     "source": "greenhouse",
     "is_remote": true,
     "location": "Remote - United States",
-    "similarity": 0.248
+    "similarity": 0.247
+  },
+  {
+    "title": "Sr. Solutions Engineer",
+    "company": "Databricks",
+    "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8450209002",
+    "source": "greenhouse",
+    "is_remote": false,
+    "location": "Central - United States",
+    "similarity": 0.245
+  },
+  {
+    "title": "Technical Solutions Engineer",
+    "company": "Stripe",
+    "url": "https://stripe.com/jobs/search?gh_jid=7377101",
+    "source": "greenhouse",
+    "is_remote": true,
+    "location": "CA-Remote-British Columbia",
+    "similarity": 0.244
   },
   {
     "title": "Go-To-Market (GTM) Digital Natives Program Leader",
@@ -69,7 +69,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "San Francisco, California; United States",
-    "similarity": 0.242
+    "similarity": 0.243
   },
   {
     "title": "Forward Deployed Engineer, Professional Services",
@@ -78,7 +78,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "United States",
-    "similarity": 0.236
+    "similarity": 0.237
   },
   {
     "title": "Sales Engineer (Customer Success - Portuguese speaking)",
@@ -87,7 +87,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Boston, Massachusetts, USA; New York, New York, USA",
-    "similarity": 0.227
+    "similarity": 0.225
   },
   {
     "title": "Sales Engineer, Startups ",
@@ -96,7 +96,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Hybrid - San Francisco, New York City, Austin",
-    "similarity": 0.227
+    "similarity": 0.225
   },
   {
     "title": "Commercial Sales Engineer, US East",
@@ -105,7 +105,7 @@
     "source": "greenhouse",
     "is_remote": true,
     "location": "Remote - United States",
-    "similarity": 0.226
+    "similarity": 0.224
   },
   {
     "title": "Mid-Market Sales Engineer (Boston)",
@@ -114,7 +114,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Boston, Massachusetts, USA",
-    "similarity": 0.224
+    "similarity": 0.222
   },
   {
     "title": "Commercial Sales Engineer (East)",
@@ -123,7 +123,7 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Boston, Massachusetts, USA; New York, New York, USA",
-    "similarity": 0.224
+    "similarity": 0.222
   },
   {
     "title": "Sales Engineer, San Francisco/Seattle",
@@ -132,7 +132,7 @@
     "source": "greenhouse",
     "is_remote": true,
     "location": "Remote - United States",
-    "similarity": 0.224
+    "similarity": 0.222
   },
   {
     "title": "Go-To-Market Engineer II, Mid-Market",
@@ -141,16 +141,7 @@
     "source": "jobspy_indeed",
     "is_remote": true,
     "location": "Remote, US",
-    "similarity": 0.22
-  },
-  {
-    "title": "Software Engineer, Growth & Monetization",
-    "company": "Figma",
-    "url": "https://boards.greenhouse.io/figma/jobs/5552560004?gh_jid=5552560004",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "San Francisco, CA \u2022 New York, NY \u2022 United States",
-    "similarity": 0.218
+    "similarity": 0.219
   },
   {
     "title": "Sales Engineer - Enterprise",
@@ -168,7 +159,16 @@
     "source": "greenhouse",
     "is_remote": true,
     "location": "Remote - San Francisco, California",
-    "similarity": 0.214
+    "similarity": 0.212
+  },
+  {
+    "title": "Software Engineer, Growth & Monetization",
+    "company": "Figma",
+    "url": "https://boards.greenhouse.io/figma/jobs/5552560004?gh_jid=5552560004",
+    "source": "greenhouse",
+    "is_remote": false,
+    "location": "San Francisco, CA \u2022 New York, NY \u2022 United States",
+    "similarity": 0.212
   },
   {
     "title": "Commercial Sales Engineer (AMER - West)",
@@ -177,96 +177,6 @@
     "source": "greenhouse",
     "is_remote": false,
     "location": "Denver, Colorado, USA",
-    "similarity": 0.212
-  },
-  {
-    "title": "Senior Sales Engineer - Key Accounts",
-    "company": "Datadog",
-    "url": "https://careers.datadoghq.com/detail/7516279/?gh_jid=7516279",
-    "source": "greenhouse",
-    "is_remote": true,
-    "location": "Illinois, USA, Remote; Texas, USA, Remote",
-    "similarity": 0.211
-  },
-  {
-    "title": "Senior Partner Solutions Engineer",
-    "company": "Vercel",
-    "url": "https://job-boards.greenhouse.io/vercel/jobs/5553789004",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "Hybrid - San Francisco, New York City, Austin",
-    "similarity": 0.208
-  },
-  {
-    "title": "Sr. Solutions Engineer - Hunter Team",
-    "company": "Databricks",
-    "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8417647002",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "Central - United States",
-    "similarity": 0.204
-  },
-  {
-    "title": "Senior Sales Engineer - Key Accounts Southcentral",
-    "company": "Datadog",
-    "url": "https://careers.datadoghq.com/detail/7711883/?gh_jid=7711883",
-    "source": "greenhouse",
-    "is_remote": true,
-    "location": "Texas, USA, Remote",
-    "similarity": 0.204
-  },
-  {
-    "title": "Sr. Specialist Solutions Engineer - Data Warehousing (Financial Services)",
-    "company": "Databricks",
-    "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8434245002",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "United States",
-    "similarity": 0.196
-  },
-  {
-    "title": "Senior Solutions Engineer / Senior Sales Engineer \u2013 Experience Edge",
-    "company": "Calix",
-    "url": "https://www.indeed.com/viewjob?jk=89638200666dd2e9",
-    "source": "jobspy_indeed",
-    "is_remote": true,
-    "location": "Remote, US",
-    "similarity": 0.195
-  },
-  {
-    "title": "Senior Sales Engineer - Key Accounts Northcentral",
-    "company": "Datadog",
-    "url": "https://careers.datadoghq.com/detail/7711785/?gh_jid=7711785",
-    "source": "greenhouse",
-    "is_remote": true,
-    "location": "Illinois, USA, Remote; Michigan, USA, Remote; Ohio, USA, Remote",
-    "similarity": 0.189
-  },
-  {
-    "title": "Senior Sales Engineer",
-    "company": "Datadog",
-    "url": "https://careers.datadoghq.com/detail/7460368/?gh_jid=7460368",
-    "source": "greenhouse",
-    "is_remote": true,
-    "location": "Illinois, USA, Remote; Kansas, USA, Remote; Minnesota, USA, Remote; Missouri, USA, Remote; Wisconsin, USA, Remote",
-    "similarity": 0.189
-  },
-  {
-    "title": "Principal Solutions Engineer",
-    "company": "SnapLogic",
-    "url": "https://www.indeed.com/viewjob?jk=419d2cc375d35812",
-    "source": "jobspy_indeed",
-    "is_remote": true,
-    "location": "Remote, US",
-    "similarity": 0.185
-  },
-  {
-    "title": "Sr. Solutions Engineer - Communications, Media, Entertainment and Games",
-    "company": "Databricks",
-    "url": "https://databricks.com/company/careers/open-positions/job?gh_jid=8402475002",
-    "source": "greenhouse",
-    "is_remote": false,
-    "location": "Northeast - United States",
-    "similarity": 0.181
+    "similarity": 0.21
   }
 ]

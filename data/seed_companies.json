@@ -2,8 +2,8 @@
   "_meta": {
     "description": "Seed companies for ATS-based job ingestion",
     "generated": "2026-04-19",
-    "total": 49,
-    "verified_count": 20
+    "total": 50,
+    "verified_count": 21
   },
   "companies": [
     {
@@ -544,6 +544,17 @@
       "industry": "music creation",
       "is_dream_company": true,
       "notes": "Verified: 1 jobs on greenhouse"
+    },
+    {
+      "name": "Greptile",
+      "website": "https://greptile.com",
+      "ats_platform": "ashby",
+      "ats_slug": "greptile.com/careers/open",
+      "ats_slug_verified": true,
+      "job_count": 0,
+      "industry": "developer tools / AI code intelligence",
+      "is_dream_company": true,
+      "notes": "Ashby-hosted on company domain. URL pattern: greptile.com/careers/open?ashby_jid=UUID. tier_2 dream company."
     }
   ]
 }
