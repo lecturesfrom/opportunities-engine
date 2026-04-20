@@ -66,9 +66,9 @@ def _normalize_row(row: pd.Series) -> dict:
     """Convert a JobSpy DataFrame row to our normalized job dict."""
     url = str(row.get("job_url", "") or row.get("url", "") or "")
     url_hash = hashlib.md5(url.lower().strip().encode()).hexdigest()
-    
+
     return {
-        "source": "jobspy_" + str(row.get("site", "unknown")),
+        "source": str(row.get("site", "unknown")).lower(),
         "source_id": str(row.get("job_id", "")),
         "url": url,
         "url_hash": url_hash,

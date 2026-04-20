@@ -2,8 +2,9 @@
 
 1. Hit verified ATS APIs (Greenhouse, Lever, Ashby) for seed companies
 2. Hit JobSpy (Indeed, Google Jobs) for catch-all keyword search
-3. Dedup and upsert everything into DuckDB
-4. Print a summary of new jobs found
+3. Hit HN Hiring for monthly 'Who is Hiring?' thread
+4. Dedup and upsert everything into DuckDB via upsert_job_with_source
+5. Print a summary of new jobs found
 """
 from __future__ import annotations
 
@@ -17,8 +18,10 @@ from rich.console import Console
 from rich.table import Table
 
 from opportunities_engine.config import settings
+from opportunities_engine.dedup import upsert_job_with_source
 from opportunities_engine.ingestion.ats import ATSClient
 from opportunities_engine.ingestion.jobspy_source import scrape_all
+from opportunities_engine.ingestion.hn_hiring import HNHiringSource
 from opportunities_engine.storage.db import JobStore
 
 console = Console()
@@ -34,11 +37,12 @@ def _load_seed_companies() -> list[dict]:
 
 
 def ingest_ats(store: JobStore, client: ATSClient | None = None) -> int:
-    """Scrape all verified ATS companies. Returns count of NEW jobs."""
+    """Scrape all verified ATS companies. Returns count of NEW jobs (new_job + review_flagged)."""
     ats = client or ATSClient()
     companies = _load_seed_companies()
     new_count = 0
-    seen_count = 0
+    new_source_count = 0
+    duplicate_count = 0
     error_count = 0
 
     for company in companies:
@@ -49,11 +53,14 @@ def ingest_ats(store: JobStore, client: ATSClient | None = None) -> int:
         try:
             jobs = ats.fetch_company(company)
             for job in jobs:
-                is_new = store.upsert_job(job)
-                if is_new:
+                source_name = job.get("source", platform.lower())
+                result = upsert_job_with_source(store, job, source_name=source_name)
+                if result.outcome in ("new_job", "review_flagged"):
                     new_count += 1
-                else:
-                    seen_count += 1
+                elif result.outcome == "new_source":
+                    new_source_count += 1
+                elif result.outcome == "duplicate":
+                    duplicate_count += 1
             console.print(f"  [green]✓[/] {name} ({platform}): {len(jobs)} jobs ({new_count} new so far)")
         except Exception as e:
             error_count += 1
@@ -61,7 +68,7 @@ def ingest_ats(store: JobStore, client: ATSClient | None = None) -> int:
 
         time.sleep(0.5)  # be polite
 
-    console.print(f"\n  ATS total: {new_count} new, {seen_count} seen, {error_count} errors")
+    console.print(f"\n  ATS total: {new_count} new, {new_source_count} new_source, {duplicate_count} duplicate, {error_count} errors")
     return new_count
 
 
@@ -73,9 +80,13 @@ def ingest_jobspy(
     linkedin_terms_cap: int = 3,
     linkedin_results_cap: int = 8,
 ) -> int:
-    """Scrape JobSpy sources. Default: Indeed+Google. Optional: LinkedIn-lite."""
+    """Scrape JobSpy sources. Default: Indeed+Google. Optional: LinkedIn-lite.
+
+    Returns count of NEW jobs (new_job + review_flagged).
+    """
     new_count = 0
-    seen_count = 0
+    new_source_count = 0
+    duplicate_count = 0
 
     for job in scrape_all(
         results_per_term=results_per_term,
@@ -84,14 +95,49 @@ def ingest_jobspy(
         linkedin_terms_cap=linkedin_terms_cap,
         linkedin_results_cap=linkedin_results_cap,
     ):
-        is_new = store.upsert_job(job)
-        if is_new:
+        source_name = job.get("source", "unknown")
+        result = upsert_job_with_source(store, job, source_name=source_name)
+        if result.outcome in ("new_job", "review_flagged"):
             new_count += 1
-        else:
-            seen_count += 1
+        elif result.outcome == "new_source":
+            new_source_count += 1
+        elif result.outcome == "duplicate":
+            duplicate_count += 1
 
     mode = "JobSpy (Indeed+Google+LinkedIn-lite)" if linkedin_lite else "JobSpy (Indeed+Google)"
-    console.print(f"  {mode}: {new_count} new, {seen_count} seen")
+    console.print(f"  {mode}: {new_count} new, {new_source_count} new_source, {duplicate_count} duplicate")
+    return new_count
+
+
+def ingest_hn_hiring(store: JobStore) -> int:
+    """Scrape Hacker News 'Who is Hiring?' thread.
+
+    Returns count of NEW jobs (new_job + review_flagged).
+    """
+    new_count = 0
+    new_source_count = 0
+    duplicate_count = 0
+
+    try:
+        source = HNHiringSource()
+        jobs = source.fetch()
+
+        for job in jobs:
+            # Ensure source field is set
+            job_copy = dict(job)
+            job_copy["source"] = "hn_hiring"
+            result = upsert_job_with_source(store, job_copy, source_name="hn_hiring")
+            if result.outcome in ("new_job", "review_flagged"):
+                new_count += 1
+            elif result.outcome == "new_source":
+                new_source_count += 1
+            elif result.outcome == "duplicate":
+                duplicate_count += 1
+
+        console.print(f"  HN Hiring: {new_count} new, {new_source_count} new_source, {duplicate_count} duplicate ({len(jobs)} total parsed)")
+    except Exception as e:
+        console.print(f"  [red]✗[/] HN Hiring: {e}")
+
     return new_count
 
 
@@ -121,8 +167,9 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 
 
 @click.command()
-@click.option("--skip-ats", is_flag=True, help="Skip ATS ingestion (JobSpy only)")
-@click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion (ATS only)")
+@click.option("--skip-ats", is_flag=True, help="Skip ATS ingestion")
+@click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion")
+@click.option("--skip-hn", is_flag=True, help="Skip HN Hiring ingestion")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
 @click.option("--linkedin-lite", is_flag=True, help="Manual capped LinkedIn sweep (easy wins)")
@@ -131,6 +178,7 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 def main(
     skip_ats: bool,
     skip_jobspy: bool,
+    skip_hn: bool,
     hours: int,
     results: int,
     linkedin_lite: bool,
@@ -146,13 +194,13 @@ def main(
     with JobStore(settings.database_path) as store:
         if not skip_ats:
             console.print("[bold]Phase 1: ATS APIs[/bold]")
-            ats_new = ingest_ats(store)
+            ingest_ats(store)
             console.print()
 
         if not skip_jobspy:
             phase_title = "Phase 2: JobSpy (Indeed + Google + optional LinkedIn-lite)"
             console.print(f"[bold]{phase_title}[/bold]")
-            spy_new = ingest_jobspy(
+            ingest_jobspy(
                 store,
                 results_per_term=results,
                 hours_old=hours,
@@ -160,6 +208,11 @@ def main(
                 linkedin_terms_cap=linkedin_terms_cap,
                 linkedin_results_cap=linkedin_results_cap,
             )
+            console.print()
+
+        if not skip_hn:
+            console.print("[bold]Phase 3: HN Hiring[/bold]")
+            ingest_hn_hiring(store)
             console.print()
 
         # Summary
