@@ -145,9 +145,8 @@ class TestDuplicate:
             job = _make_job(1)
             r1 = upsert_job_with_source(store, job, "greenhouse")
 
-            # Back-date last_seen (use naive datetime to match DuckDB storage)
-            past = datetime.now(timezone.utc) - timedelta(hours=2)
-            past_naive = past.replace(tzinfo=None)
+            # Back-date last_seen (use naive local datetime to match DuckDB storage)
+            past_naive = datetime.now() - timedelta(hours=2)
             store.conn.execute(
                 "UPDATE job_sources SET last_seen = $1 WHERE job_id = $2",
                 [past_naive, r1.job_id],
