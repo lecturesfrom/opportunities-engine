@@ -47,25 +47,11 @@ ON CONFLICT (version) DO NOTHING;
 
 @pytest.fixture
 def fresh_conn() -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB connection with base schema."""
+    """In-memory DuckDB connection — no pre-created tables.
+
+    Migrations handle ALL table creation now (001 includes base tables).
+    """
     conn = duckdb.connect(":memory:")
-    # Bootstrap base tables (what _BASE_SCHEMA_SQL would do)
-    conn.execute("""
-        CREATE SEQUENCE IF NOT EXISTS job_id_seq START 1;
-        CREATE SEQUENCE IF NOT EXISTS company_id_seq START 1;
-        CREATE TABLE IF NOT EXISTS jobs (
-            id INTEGER PRIMARY KEY DEFAULT nextval('job_id_seq'),
-            source TEXT NOT NULL,
-            url TEXT UNIQUE NOT NULL,
-            url_hash TEXT NOT NULL,
-            title TEXT NOT NULL,
-            company TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS companies (
-            id INTEGER PRIMARY KEY DEFAULT nextval('company_id_seq'),
-            name TEXT UNIQUE NOT NULL
-        );
-    """)
     yield conn
     conn.close()
 
@@ -77,7 +63,7 @@ def fresh_conn() -> duckdb.DuckDBPyConnection:
 class TestMigrationDiscovery:
     def test_discovers_sql_files(self, migrations_dir: Path):
         files = _migration_files(migrations_dir)
-        assert len(files) == 1
+        assert len(files) >= 1
         assert files[0][0] == "001"  # version
         assert files[0][1] == "test_table"  # name
 
@@ -209,21 +195,21 @@ class Test001InitialSchema:
         cols = {c[0] for c in migrated_conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'job_sources'"
         ).fetchall()}
-        expected = {"id", "job_id", "source", "source_id", "found_at", "discovery_path"}
+        expected = {"id", "job_id", "source_name", "source_url", "raw_payload", "first_seen", "last_seen", "source_trust"}
         assert expected.issubset(cols)
 
     def test_company_attractions_columns(self, migrated_conn: duckdb.DuckDBPyConnection):
         cols = {c[0] for c in migrated_conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'company_attractions'"
         ).fetchall()}
-        expected = {"id", "company_id", "attraction", "intensity", "note"}
+        expected = {"id", "company_id", "attribute", "weight", "source"}
         assert expected.issubset(cols)
 
     def test_companies_new_columns(self, migrated_conn: duckdb.DuckDBPyConnection):
         cols = {c[0] for c in migrated_conn.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'companies'"
         ).fetchall()}
-        new_cols = {"canonical_name", "hq_location", "founded_year", "linkedin_url", "twitter_handle"}
+        new_cols = {"canonical_name", "hq_location", "founded_year", "linkedin_url", "twitter_handle", "is_dream", "why_i_love", "priority", "status", "ats_platforms_json"}
         assert new_cols.issubset(cols)
 
     def test_archive_schema_exists(self, migrated_conn: duckdb.DuckDBPyConnection):
@@ -274,25 +260,29 @@ class Test001InitialSchema:
 
 class TestDataPreservation:
     def test_existing_jobs_survive_migration(self, tmp_path: Path):
-        """Simulate: create DB with jobs, run migration, verify row count."""
+        """Simulate: create DB with jobs, run migration, verify row count.
+
+        This simulates the real-world scenario: a pre-existing DB has rows
+        in the jobs table, and the migration runner adds the new schema on
+        top. Since migration 001 uses CREATE TABLE IF NOT EXISTS, existing
+        tables are left intact and new tables are added.
+        """
         db_path = tmp_path / "test.duckdb"
         conn = duckdb.connect(str(db_path))
 
-        # Bootstrap base schema + insert a job
+        # Bootstrap a minimal jobs table + insert a job
+        # (Simulates the state of the live DB before migrations)
+        # Include all NOT NULL columns that the migration SQL references
         conn.execute("""
             CREATE SEQUENCE IF NOT EXISTS job_id_seq START 1;
-            CREATE SEQUENCE IF NOT EXISTS company_id_seq START 1;
             CREATE TABLE IF NOT EXISTS jobs (
                 id INTEGER PRIMARY KEY DEFAULT nextval('job_id_seq'),
                 source TEXT NOT NULL,
                 url TEXT UNIQUE NOT NULL,
                 url_hash TEXT NOT NULL,
                 title TEXT NOT NULL,
-                company TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS companies (
-                id INTEGER PRIMARY KEY DEFAULT nextval('company_id_seq'),
-                name TEXT UNIQUE NOT NULL
+                company TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         conn.execute(

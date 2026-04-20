@@ -1,16 +1,93 @@
 -- ============================================================
 -- Migration 001: initial_schema
--- Creates the foundation tables for the opportunities-engine.
+-- Creates ALL foundation tables for the opportunities-engine.
 -- All statements are idempotent (IF NOT EXISTS).
 -- DuckDB requires sequences BEFORE tables that reference them.
 -- ============================================================
 
 -- All sequences first (DuckDB strict ordering requirement)
+CREATE SEQUENCE IF NOT EXISTS job_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS migration_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS job_source_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS event_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS score_id_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS company_id_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS company_attraction_id_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS skill_gap_id_seq START 1;
+
+-- Base table: jobs (existed before migrations, now formally declared)
+CREATE TABLE IF NOT EXISTS jobs (
+    id               INTEGER PRIMARY KEY DEFAULT nextval('job_id_seq'),
+    source           TEXT NOT NULL,
+    source_id        TEXT,
+    url              TEXT NOT NULL UNIQUE,
+    url_hash         TEXT NOT NULL,
+    title            TEXT NOT NULL,
+    company          TEXT NOT NULL,
+    location         TEXT,
+    description      TEXT,
+    salary_min       REAL,
+    salary_max       REAL,
+    salary_currency  TEXT DEFAULT 'USD',
+    date_posted      TIMESTAMP,
+    date_first_seen  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_last_seen   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_remote        BOOLEAN,
+    job_type         TEXT,
+    seniority        TEXT,
+    department       TEXT,
+    company_industry TEXT,
+    company_size     TEXT,
+    metadata         JSON,
+    status           TEXT DEFAULT 'new',
+    linear_issue_id  TEXT,
+    notes            TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Base table: companies (formal replacement for JSON reference data)
+CREATE TABLE IF NOT EXISTS companies (
+    id                  INTEGER PRIMARY KEY DEFAULT nextval('company_id_seq'),
+    canonical_name      TEXT UNIQUE,
+    name                TEXT NOT NULL,
+    website             TEXT,
+    industry            TEXT,
+    hq_location         TEXT,
+    company_size        TEXT,
+    funding_stage       TEXT,
+    ats_platforms_json  JSON,
+    is_dream            BOOLEAN DEFAULT FALSE,
+    why_i_love          TEXT,
+    priority            TEXT,
+    status              TEXT,
+    discovery_path      TEXT,
+    active_role         TEXT,
+    active_role_url     TEXT,
+    notes               TEXT,
+    source              TEXT,
+    added_at            TEXT,
+    last_funding_date   TIMESTAMP,
+    last_funding_amount REAL,
+    last_funding_stage  TEXT,
+    linkedin_url        TEXT,
+    twitter_handle      TEXT,
+    founded_year        INTEGER,
+    attraction_types    TEXT,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Base table: skill_gaps (existed before migrations)
+CREATE TABLE IF NOT EXISTS skill_gaps (
+    id          INTEGER PRIMARY KEY DEFAULT nextval('skill_gap_id_seq'),
+    job_id      INTEGER NOT NULL REFERENCES jobs(id),
+    skill       TEXT NOT NULL,
+    priority    TEXT DEFAULT 'medium',
+    status      TEXT DEFAULT 'identified',
+    notes       TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- 1. schema_migrations — track applied migrations
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -23,13 +100,15 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 -- 2. job_sources — multi-source agreement signal
 CREATE TABLE IF NOT EXISTS job_sources (
-    id             INTEGER PRIMARY KEY DEFAULT nextval('job_source_id_seq'),
-    job_id         INTEGER NOT NULL REFERENCES jobs(id),
-    source         TEXT NOT NULL,
-    source_id      TEXT,
-    found_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    discovery_path TEXT,
-    UNIQUE(job_id, source)
+    id            INTEGER PRIMARY KEY DEFAULT nextval('job_source_id_seq'),
+    job_id        INTEGER NOT NULL REFERENCES jobs(id),
+    source_name   TEXT NOT NULL,
+    source_url    TEXT,
+    raw_payload   JSON,
+    first_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    source_trust  TEXT DEFAULT 'trusted',
+    UNIQUE(job_id, source_name)
 );
 
 -- 3. events — funnel log, append-only
@@ -57,21 +136,11 @@ CREATE TABLE IF NOT EXISTS scores (
 CREATE TABLE IF NOT EXISTS company_attractions (
     id          INTEGER PRIMARY KEY DEFAULT nextval('company_attraction_id_seq'),
     company_id  INTEGER NOT NULL REFERENCES companies(id),
-    attraction  TEXT NOT NULL,
-    intensity   REAL DEFAULT 1.0,
-    note        TEXT,
-    UNIQUE(company_id, attraction)
+    attribute   TEXT NOT NULL,
+    weight      REAL DEFAULT 1.0,
+    source      TEXT,
+    UNIQUE(company_id, attribute)
 );
-
--- 5b. Alter companies — add new columns (all nullable for safe ALTER)
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS canonical_name TEXT;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS hq_location TEXT;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS founded_year INTEGER;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS last_funding_date TIMESTAMP;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS last_funding_amount REAL;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS last_funding_stage TEXT;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS linkedin_url TEXT;
-ALTER TABLE companies ADD COLUMN IF NOT EXISTS twitter_handle TEXT;
 
 -- 7. Indexes
 CREATE INDEX IF NOT EXISTS idx_job_sources_job_id ON job_sources(job_id);

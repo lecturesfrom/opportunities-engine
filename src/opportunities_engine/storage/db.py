@@ -10,91 +10,6 @@ import duckdb
 
 from opportunities_engine.storage.migrate import run_migrations
 
-# Base schema for the four original tables — kept as a fallback for
-# databases that haven't been migrated yet.  The migration runner
-# (run_migrations) handles everything else, including the new tables
-# (job_sources, events, scores, company_attractions) and the archive
-# schema.
-
-_BASE_SCHEMA_SQL = """
-CREATE SEQUENCE IF NOT EXISTS job_id_seq START 1;
-CREATE SEQUENCE IF NOT EXISTS company_id_seq START 1;
-CREATE SEQUENCE IF NOT EXISTS app_id_seq START 1;
-CREATE SEQUENCE IF NOT EXISTS skill_id_seq START 1;
-
-CREATE TABLE IF NOT EXISTS jobs (
-    id INTEGER PRIMARY KEY DEFAULT nextval('job_id_seq'),
-    source TEXT NOT NULL,
-    source_id TEXT,
-    url TEXT UNIQUE NOT NULL,
-    url_hash TEXT NOT NULL,
-    title TEXT NOT NULL,
-    company TEXT NOT NULL,
-    location TEXT,
-    description TEXT,
-    salary_min REAL,
-    salary_max REAL,
-    salary_currency TEXT DEFAULT 'USD',
-    date_posted TIMESTAMP,
-    date_first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_remote BOOLEAN,
-    job_type TEXT,
-    seniority TEXT,
-    department TEXT,
-    company_industry TEXT,
-    company_size TEXT,
-    metadata JSON,
-    status TEXT DEFAULT 'new',
-    linear_issue_id TEXT,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS companies (
-    id INTEGER PRIMARY KEY DEFAULT nextval('company_id_seq'),
-    name TEXT UNIQUE NOT NULL,
-    website TEXT,
-    ats_platform TEXT,
-    ats_slug TEXT,
-    industry TEXT,
-    size TEXT,
-    funding_stage TEXT,
-    is_dream_company BOOLEAN DEFAULT FALSE,
-    attraction_types TEXT,
-    why_i_love_this TEXT,
-    linear_project_id TEXT,
-    metadata JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS applications (
-    id INTEGER PRIMARY KEY DEFAULT nextval('app_id_seq'),
-    job_id INTEGER REFERENCES jobs(id),
-    applied_at TIMESTAMP,
-    method TEXT,
-    cover_letter_path TEXT,
-    resume_version TEXT,
-    follow_up_dates JSON,
-    status TEXT DEFAULT 'applied',
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS skill_gaps (
-    id INTEGER PRIMARY KEY DEFAULT nextval('skill_id_seq'),
-    skill TEXT NOT NULL,
-    job_id INTEGER REFERENCES jobs(id),
-    confidence REAL DEFAULT 0.5,
-    status TEXT DEFAULT 'identified',
-    resources JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
 
 def _normalize_url(url: str) -> str:
     """Lowercase and strip trailing slashes / query fluff for hashing."""
@@ -147,9 +62,7 @@ class JobStore:
     # ------------------------------------------------------------------
     def _init_schema(self) -> None:
         assert self.conn is not None
-        # 1. Bootstrap base tables (jobs, companies, applications, skill_gaps)
-        self.conn.execute(_BASE_SCHEMA_SQL)
-        # 2. Run migrations (creates new tables, indexes, archive, etc.)
+        # Migrations handle ALL table creation (001 includes base tables)
         run_migrations(self.conn)
 
     # ------------------------------------------------------------------
@@ -249,12 +162,14 @@ class JobStore:
         return True
 
     def upsert_company(self, company: dict) -> bool:
-        """Insert or update a company (matched by name). Returns True if new."""
+        """Insert or update a company (matched by canonical_name). Returns True if new."""
         assert self.conn is not None
 
         name = company["name"]
+        import re as _re
+        canonical = _re.sub(r"\s+", " ", name.strip().lower())
         existing = self.conn.execute(
-            "SELECT id FROM companies WHERE name = $1", [name]
+            "SELECT id FROM companies WHERE canonical_name = $1", [canonical]
         ).fetchone()
 
         now = datetime.now(timezone.utc)
@@ -262,51 +177,57 @@ class JobStore:
         if existing is not None:
             updates: dict[str, Any] = {"updated_at": now}
             for col in (
-                "website", "ats_platform", "ats_slug", "industry", "size",
-                "funding_stage", "is_dream_company", "attraction_types",
-                "why_i_love_this", "linear_project_id",
+                "website", "industry", "company_size", "funding_stage",
+                "is_dream", "why_i_love", "priority", "status",
+                "notes", "source", "ats_platforms_json",
             ):
                 if col in company and company[col] is not None:
                     updates[col] = company[col]
-            if "metadata" in company:
-                updates["metadata"] = json.dumps(company["metadata"]) if isinstance(company["metadata"], dict) else company["metadata"]
 
             set_clause = ", ".join(f"{k} = ${i+1}" for i, k in enumerate(updates.keys()))
             where_idx = len(updates) + 1
-            values = list(updates.values()) + [name]
+            values = list(updates.values()) + [canonical]
             self.conn.execute(
-                f"UPDATE companies SET {set_clause} WHERE name = ${where_idx}",
+                f"UPDATE companies SET {set_clause} WHERE canonical_name = ${where_idx}",
                 values,
             )
             return False
 
-        metadata_json = json.dumps(company.get("metadata", {}))
+        ats_json = json.dumps(company.get("ats_platforms", [])) if company.get("ats_platforms") else None
         self.conn.execute(
             """
             INSERT INTO companies (
-                name, website, ats_platform, ats_slug, industry, size,
-                funding_stage, is_dream_company, attraction_types,
-                why_i_love_this, linear_project_id, metadata,
+                canonical_name, name, website, industry, hq_location,
+                company_size, funding_stage, ats_platforms_json,
+                is_dream, why_i_love, priority, status,
+                discovery_path, active_role, active_role_url,
+                notes, source, added_at,
                 created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11, $12,
-                $13, $14
+                $1, $2, $3, $4, $5, $6, $7, $8,
+                $9, $10, $11, $12, $13, $14, $15,
+                $16, $17, $18, $19, $20
             )
             """,
             [
+                canonical,
                 name,
                 company.get("website"),
-                company.get("ats_platform"),
-                company.get("ats_slug"),
                 company.get("industry"),
-                company.get("size"),
+                company.get("hq_location"),
+                company.get("company_size"),
                 company.get("funding_stage"),
-                company.get("is_dream_company", False),
-                company.get("attraction_types"),
-                company.get("why_i_love_this"),
-                company.get("linear_project_id"),
-                metadata_json,
+                ats_json,
+                company.get("is_dream", False),
+                company.get("why_i_love"),
+                company.get("priority"),
+                company.get("status"),
+                company.get("discovery_path"),
+                company.get("active_role"),
+                company.get("active_role_url"),
+                company.get("notes"),
+                company.get("source"),
+                company.get("added_at"),
                 now,
                 now,
             ],

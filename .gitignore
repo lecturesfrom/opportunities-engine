@@ -43,3 +43,5 @@ Thumbs.db
 # Logs
 *.log
 logs/
+*.duckdb*
+*.duckdb.pre-phase-b
