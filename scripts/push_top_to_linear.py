@@ -12,6 +12,10 @@ from pathlib import Path
 import click
 from rich.console import Console
 
+from opportunities_engine.config import settings
+from opportunities_engine.events import emit_event, PUSHED_TO_LINEAR
+from opportunities_engine.storage.db import JobStore, get_job_id_by_url
+
 console = Console()
 REPO = Path(__file__).resolve().parents[1]
 RANKED = REPO / "data" / "ranked_jobs.json"
@@ -110,7 +114,7 @@ def main(top: int, dry_run: bool) -> None:
     mutation($input: IssueCreateInput!) {
       issueCreate(input: $input) {
         success
-        issue { identifier title url }
+        issue { id identifier title url }
       }
     }
     """
@@ -145,6 +149,20 @@ def main(top: int, dry_run: bool) -> None:
         console.print(f"[green]✓[/green] {issue['identifier']} {issue['title']}")
         created += 1
         existing.add(key)
+
+        # Emit PUSHED_TO_LINEAR event
+        with JobStore(settings.database_path) as store:
+            job_id = get_job_id_by_url(store, job["url"])
+            if job_id is not None:
+                emit_event(
+                    store,
+                    job_id,
+                    PUSHED_TO_LINEAR,
+                    detail={
+                        "linear_issue_id": issue["id"],
+                        "linear_issue_url": issue["url"],
+                    },
+                )
 
     console.print(f"\nDone: created={created}, skipped_existing={skipped}, scanned={len(jobs)}")
 

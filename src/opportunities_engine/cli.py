@@ -12,7 +12,8 @@ from rich.console import Console
 from rich.table import Table
 
 from opportunities_engine.config import get_default_logs_path, settings
-from opportunities_engine.events import POSSIBLE_DUPLICATE
+from opportunities_engine.events import POSSIBLE_DUPLICATE, emit_event
+from opportunities_engine.events.vocab import ALL_EVENT_TYPES
 from opportunities_engine.storage.db import JobStore
 
 console = Console()
@@ -217,6 +218,36 @@ def stats(last: str) -> None:
     table.add_row("Review queue depth", str(review_queue_depth))
 
     console.print(table)
+
+
+@main.group()
+def event() -> None:
+    """Event emission and diagnostics."""
+
+
+@event.command("add")
+@click.option("--job-id", type=int, required=True)
+@click.option("--type", "event_type", required=True)
+@click.option("--notes", default=None)
+@click.option("--actor", default="keegan")
+def event_add(job_id: int, event_type: str, notes: str | None, actor: str) -> None:
+    """Append a manual event to a job's timeline."""
+    if event_type not in ALL_EVENT_TYPES:
+        allowed = sorted(ALL_EVENT_TYPES)
+        console.print(
+            f"[red]Error:[/red] Unknown event type {event_type!r}. "
+            f"Allowed types: {allowed}"
+        )
+        raise SystemExit(1)
+
+    detail: dict | None = {"notes": notes} if notes else None
+
+    with JobStore(settings.database_path) as store:
+        emit_event(store, job_id, event_type, actor=actor, detail=detail)
+
+    console.print(
+        f"[green]Event recorded:[/green] job_id={job_id} type={event_type!r} actor={actor!r}"
+    )
 
 
 if __name__ == "__main__":

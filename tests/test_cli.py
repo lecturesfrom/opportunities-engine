@@ -19,8 +19,9 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from opportunities_engine.cli import dedup, parse_time_window, read_dedup_jsonl
+from opportunities_engine.cli import dedup, event, parse_time_window, read_dedup_jsonl
 from opportunities_engine.events import POSSIBLE_DUPLICATE
+from opportunities_engine.events.vocab import ALL_EVENT_TYPES
 from opportunities_engine.storage.db import JobStore, _url_hash
 
 
@@ -381,3 +382,128 @@ class TestDedupStats:
             result = runner.invoke(dedup, ["stats", "--last", "invalid"])
 
         assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Test engine event add CLI command
+# ---------------------------------------------------------------------------
+
+
+class TestEventAdd:
+    """Test the `engine event add` command."""
+
+    def _make_store_with_job(self, db_path: str) -> int:
+        """Create a store with one job and return its job_id."""
+        with JobStore(db_path) as store:
+            assert store.conn is not None
+            store.conn.execute(
+                """
+                INSERT INTO jobs (source, url, url_hash, title, company, location,
+                                  created_at, updated_at)
+                VALUES ('test', 'https://example.com/job/1', md5('https://example.com/job/1'),
+                        'Test Job', 'Test Co', 'Remote',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+            )
+            row = store.conn.execute("SELECT id FROM jobs LIMIT 1").fetchone()
+            assert row is not None
+            return int(row[0])
+
+    def test_success_path_creates_event_row(self, tmp_path: Path) -> None:
+        """Valid job-id + valid type → exit 0 and event row inserted."""
+        db_path = str(tmp_path / "test.duckdb")
+        job_id = self._make_store_with_job(db_path)
+
+        runner = CliRunner()
+        with patch("opportunities_engine.cli.settings") as mock_settings:
+            mock_settings.database_path = db_path
+            result = runner.invoke(event, ["add", "--job-id", str(job_id), "--type", "applied"])
+
+        assert result.exit_code == 0, result.output
+        assert "applied" in result.output.lower() or "recorded" in result.output.lower()
+
+        with JobStore(db_path) as store:
+            rows = store.conn.execute(
+                "SELECT event_type, actor FROM events WHERE job_id = $1",
+                [job_id],
+            ).fetchall()
+
+        assert len(rows) == 1
+        assert rows[0][0] == "applied"
+        assert rows[0][1] == "keegan"  # default actor
+
+    def test_invalid_event_type_exits_nonzero(self, tmp_path: Path) -> None:
+        """Invalid event type → non-zero exit code and stderr mentions allowed types."""
+        db_path = str(tmp_path / "test.duckdb")
+        self._make_store_with_job(db_path)
+
+        runner = CliRunner()
+        with patch("opportunities_engine.cli.settings") as mock_settings:
+            mock_settings.database_path = db_path
+            result = runner.invoke(
+                event,
+                ["add", "--job-id", "1", "--type", "not_a_real_type"],
+            )
+
+        assert result.exit_code != 0
+        # Output should mention the bad type or allowed types
+        assert "not_a_real_type" in result.output or "scored" in result.output
+
+    def test_notes_ends_up_in_detail(self, tmp_path: Path) -> None:
+        """--notes value is stored in the detail JSON field."""
+        db_path = str(tmp_path / "test.duckdb")
+        job_id = self._make_store_with_job(db_path)
+
+        runner = CliRunner()
+        with patch("opportunities_engine.cli.settings") as mock_settings:
+            mock_settings.database_path = db_path
+            result = runner.invoke(
+                event,
+                [
+                    "add",
+                    "--job-id", str(job_id),
+                    "--type", "applied",
+                    "--notes", "sent resume via LinkedIn",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+
+        with JobStore(db_path) as store:
+            row = store.conn.execute(
+                "SELECT detail FROM events WHERE job_id = $1 AND event_type = 'applied'",
+                [job_id],
+            ).fetchone()
+
+        assert row is not None
+        detail = json.loads(row[0])
+        assert detail["notes"] == "sent resume via LinkedIn"
+
+    def test_custom_actor_is_stored(self, tmp_path: Path) -> None:
+        """--actor override is stored in the events row."""
+        db_path = str(tmp_path / "test.duckdb")
+        job_id = self._make_store_with_job(db_path)
+
+        runner = CliRunner()
+        with patch("opportunities_engine.cli.settings") as mock_settings:
+            mock_settings.database_path = db_path
+            result = runner.invoke(
+                event,
+                [
+                    "add",
+                    "--job-id", str(job_id),
+                    "--type", "phone_screen",
+                    "--actor", "recruiter",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+
+        with JobStore(db_path) as store:
+            row = store.conn.execute(
+                "SELECT actor FROM events WHERE job_id = $1",
+                [job_id],
+            ).fetchone()
+
+        assert row is not None
+        assert row[0] == "recruiter"
