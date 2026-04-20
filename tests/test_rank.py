@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 from opportunities_engine.events.vocab import SCORED
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
@@ -70,33 +67,20 @@ class TestRankScoreEmission:
             },
         ]
 
-        # Patch rank_jobs_local, settings.database_path, and suppress console output
-        with (
-            patch(
-                "opportunities_engine.semantic.ranker.rank_jobs_local",
-                return_value=ranked_jobs,
-            ),
-            patch("scripts.rank.settings") as mock_settings,
-            patch("scripts.rank.console"),
-        ):
-            mock_settings.database_path = str(db_path)
-            mock_settings.repo_root = tmp_path
+        # Emit SCORED events directly (no ranker dependency needed)
+        from opportunities_engine.events import emit_event
+        from opportunities_engine.storage.db import get_job_id_by_url
 
-            # Import and call the emit loop directly (not via Click) to avoid
-            # the store.get_jobs() call that requires more data
-            from opportunities_engine.events import emit_event
-            from opportunities_engine.storage.db import get_job_id_by_url
-
-            with JobStore(str(db_path)) as store:
-                for i, job in enumerate(ranked_jobs):
-                    jid = get_job_id_by_url(store, job["url"])
-                    assert jid is not None
-                    emit_event(
-                        store,
-                        jid,
-                        SCORED,
-                        detail={"score": job["similarity"], "rank_position": i},
-                    )
+        with JobStore(str(db_path)) as store:
+            for i, job in enumerate(ranked_jobs):
+                jid = get_job_id_by_url(store, job["url"])
+                assert jid is not None
+                emit_event(
+                    store,
+                    jid,
+                    SCORED,
+                    detail={"score": job["similarity"], "rank_position": i},
+                )
 
         # Verify SCORED rows
         with JobStore(str(db_path)) as store:
