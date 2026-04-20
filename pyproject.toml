@@ -35,6 +35,7 @@ dev = [
 
 [project.scripts]
 oe = "opportunities_engine.cli:main"
+engine = "opportunities_engine.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opportunities_engine"]
