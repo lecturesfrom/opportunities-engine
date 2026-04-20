@@ -304,3 +304,61 @@ class TestUrlShortCircuit:
             r2 = upsert_job_with_source(store, job, "lever")
             assert r2.outcome == "new_source"
             assert r2.job_id == r1.job_id
+
+
+class TestEmptyUrl:
+    """Ashby (and occasionally other ingesters) may return jobs with no URL.
+    jobs.url is NOT NULL UNIQUE, so blanks must be synthesized at the
+    chokepoint. Canonical-key dedup still handles re-observation.
+    """
+
+    def test_two_empty_url_jobs_different_canonical_both_insert(self) -> None:
+        with JobStore(":memory:") as store:
+            a = _make_job(1, title="GTM Engineer", company="Acme", url="", source="ashby")
+            b = _make_job(2, title="Forward Deployed Engineer", company="Acme", url="", source="ashby")
+            r1 = upsert_job_with_source(store, a, "ashby")
+            r2 = upsert_job_with_source(store, b, "ashby")
+            assert r1.outcome == "new_job"
+            assert r2.outcome == "new_job"
+            assert r1.job_id != r2.job_id
+
+    def test_empty_url_is_synthesized_as_urn(self) -> None:
+        with JobStore(":memory:") as store:
+            job = _make_job(42, title="GTM Engineer", company="Acme", url="", source="ashby")
+            result = upsert_job_with_source(store, job, "ashby")
+            row = store.conn.execute(
+                "SELECT url FROM jobs WHERE id = $1", [result.job_id]
+            ).fetchone()
+            assert row[0].startswith("urn:opp:ashby:")
+            assert "42" in row[0]  # source_id threads through
+
+    def test_empty_url_whitespace_treated_as_empty(self) -> None:
+        with JobStore(":memory:") as store:
+            a = _make_job(1, title="A", company="Co", url="   ", source="ashby")
+            b = _make_job(2, title="B", company="Co", url="\t\n", source="ashby")
+            r1 = upsert_job_with_source(store, a, "ashby")
+            r2 = upsert_job_with_source(store, b, "ashby")
+            assert r1.outcome == "new_job"
+            assert r2.outcome == "new_job"
+
+    def test_empty_url_same_canonical_still_dedups(self) -> None:
+        """Same title/company/location + empty URL from two Ashby pulls → second is duplicate."""
+        with JobStore(":memory:") as store:
+            job = _make_job(1, title="GTM Engineer", company="Acme", url="", source="ashby")
+            r1 = upsert_job_with_source(store, job, "ashby")
+            r2 = upsert_job_with_source(store, job, "ashby")
+            assert r1.outcome == "new_job"
+            assert r2.outcome == "duplicate"
+
+    def test_empty_url_no_source_id_falls_back_to_canonical_hash(self) -> None:
+        """If both url and source_id are empty, URN derives from canonical_key hash."""
+        with JobStore(":memory:") as store:
+            a = _make_job(1, title="Ops Lead", company="Acme", url="", source="ashby")
+            a["source_id"] = ""
+            b = _make_job(2, title="Finance Lead", company="Acme", url="", source="ashby")
+            b["source_id"] = ""
+            r1 = upsert_job_with_source(store, a, "ashby")
+            r2 = upsert_job_with_source(store, b, "ashby")
+            assert r1.outcome == "new_job"
+            assert r2.outcome == "new_job"
+            assert r1.job_id != r2.job_id
