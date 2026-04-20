@@ -23,6 +23,22 @@ def get_default_db_path() -> Path:
     base.mkdir(parents=True, exist_ok=True)
     return base / "jobs.duckdb"
 
+
+def get_default_logs_path() -> Path:
+    """Return the default logs directory.
+
+    Creates the directory if it doesn't exist.
+    macOS: ~/Library/Logs/opportunities-engine
+    Linux fallback: ~/.opportunities-engine/logs
+    """
+    if os.name == "posix" and Path.home().joinpath("Library", "Logs").exists():
+        base = Path.home() / "Library" / "Logs" / "opportunities-engine"
+    else:
+        base = Path.home() / ".opportunities-engine" / "logs"
+
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
 # User-curated GTME + adjacent role universe (flat, no weights)
 DEFAULT_TARGET_TITLES: list[str] = [
     # Core GTME
@@ -123,6 +139,10 @@ class Settings(BaseSettings):
     us_remote_only: bool = True
     min_relevance_score: float = 0.16
     max_daily_shortlist: int = 25
+
+    # Dedup pipeline thresholds
+    dedup_threshold: int = 95
+    dedup_review_floor: int = 93
 
     @property
     def repo_root(self) -> Path:
