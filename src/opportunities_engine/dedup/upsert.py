@@ -11,6 +11,7 @@ URL short-circuit: if job['url'] exactly matches an existing jobs.url, skip
 canonical/fuzzy and treat as the existing job_id directly.
 """
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,6 +24,17 @@ from opportunities_engine.dedup.canonical import (
 )
 from opportunities_engine.dedup.fuzzy import fuzzy_match
 from opportunities_engine.storage.db import JobStore, _normalize_url, _url_hash
+
+
+def _synthesize_url(source_name: str, source_id: str, canonical_key: str) -> str:
+    """Synthesize a deterministic placeholder URL for jobs with no public URL.
+
+    Some ingesters (Ashby, occasionally) return jobs without a url/externalUrl.
+    jobs.url is NOT NULL UNIQUE, so we need a stable, unique placeholder.
+    URN form keeps it obvious the URL is synthetic.
+    """
+    key = source_id or hashlib.sha1(canonical_key.encode("utf-8")).hexdigest()[:12]
+    return f"urn:opp:{source_name}:{key}"
 
 
 @dataclass(frozen=True)
@@ -201,8 +213,18 @@ def _insert_new_job(
     """Insert a new job row + job_sources row. Returns the new job_id."""
     import json as _json
 
-    url = job.get("url", "")
-    url_h = _url_hash(url) if url else ""
+    raw_url = job.get("url") or ""
+    if raw_url.strip():
+        url = raw_url
+    else:
+        # No public URL — synthesize a unique placeholder so the UNIQUE
+        # constraint on jobs.url holds. Canonical-key dedup handles re-obs.
+        url = _synthesize_url(
+            source_name=source_name,
+            source_id=str(job.get("source_id") or ""),
+            canonical_key=canonical_key,
+        )
+    url_h = _url_hash(url)
     metadata_json = _json.dumps(job.get("metadata", {})) if job.get("metadata") is not None else "{}"
 
     row = conn.execute(  # type: ignore[union-attr]
