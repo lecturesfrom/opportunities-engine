@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS companies (
 -- Base table: skill_gaps (existed before migrations)
 CREATE TABLE IF NOT EXISTS skill_gaps (
     id          INTEGER PRIMARY KEY DEFAULT nextval('skill_gap_id_seq'),
-    job_id      INTEGER NOT NULL REFERENCES jobs(id),
+    job_id      INTEGER NOT NULL,
     skill       TEXT NOT NULL,
     priority    TEXT DEFAULT 'medium',
     status      TEXT DEFAULT 'identified',
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 -- 2. job_sources — multi-source agreement signal
 CREATE TABLE IF NOT EXISTS job_sources (
     id            INTEGER PRIMARY KEY DEFAULT nextval('job_source_id_seq'),
-    job_id        INTEGER NOT NULL REFERENCES jobs(id),
+    job_id        INTEGER NOT NULL,
     source_name   TEXT NOT NULL,
     source_url    TEXT,
     raw_payload   JSON,
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS job_sources (
 -- 3. events — funnel log, append-only
 CREATE TABLE IF NOT EXISTS events (
     id          INTEGER PRIMARY KEY DEFAULT nextval('event_id_seq'),
-    job_id      INTEGER NOT NULL REFERENCES jobs(id),
+    job_id      INTEGER NOT NULL,
     event_type  TEXT NOT NULL,
     occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     actor       TEXT DEFAULT 'system',
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS events (
 -- 4. scores — ranker audit trail
 CREATE TABLE IF NOT EXISTS scores (
     id               INTEGER PRIMARY KEY DEFAULT nextval('score_id_seq'),
-    job_id           INTEGER NOT NULL REFERENCES jobs(id),
+    job_id           INTEGER NOT NULL,
     score            REAL NOT NULL,
     ranker_version   TEXT NOT NULL,
     scored_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS scores (
 -- 5. company_attractions — dream taxonomy as queryable rows
 CREATE TABLE IF NOT EXISTS company_attractions (
     id          INTEGER PRIMARY KEY DEFAULT nextval('company_attraction_id_seq'),
-    company_id  INTEGER NOT NULL REFERENCES companies(id),
+    company_id  INTEGER NOT NULL,
     attribute   TEXT NOT NULL,
     weight      REAL DEFAULT 1.0,
     source      TEXT,

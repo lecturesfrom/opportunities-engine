@@ -149,7 +149,7 @@ class TestHealthCheck:
         # Verify the warn threshold: mock schema_version_count to 1
         # by directly calling health_check on a DB where we delete migration rows
         # Delete enough rows to drop below the warn threshold of 2
-        store_memory.conn.execute("DELETE FROM schema_migrations WHERE version IN ('002', '003')")
+        store_memory.conn.execute("DELETE FROM schema_migrations WHERE version NOT IN ('001')")
         result_stale = store_memory.health_check()
         assert result_stale["schema_version_count"] < 2
         assert result_stale["status"] == "warn"
