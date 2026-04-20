@@ -1,4 +1,5 @@
 """Configuration — loads .env, exposes typed settings."""
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -6,6 +7,21 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def get_default_db_path() -> Path:
+    """Return the default DB path under ~/Library/Application Support/.
+
+    Creates the parent directory if it doesn't exist.
+    On non-macOS systems, falls back to ~/.opportunities-engine/.
+    """
+    if os.name == "posix" and Path.home().joinpath("Library", "Application Support").exists():
+        base = Path.home() / "Library" / "Application Support" / "opportunities-engine"
+    else:
+        base = Path.home() / ".opportunities-engine"
+
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "jobs.duckdb"
 
 # User-curated GTME + adjacent role universe (flat, no weights)
 DEFAULT_TARGET_TITLES: list[str] = [
@@ -100,7 +116,7 @@ class Settings(BaseSettings):
 
     # Behavior
     target_titles: list[str] = Field(default_factory=lambda: list(DEFAULT_TARGET_TITLES))
-    database_path: Path = REPO_ROOT / "data" / "jobs.duckdb"
+    database_path: Path = Field(default_factory=get_default_db_path)
     chroma_path: Path = REPO_ROOT / "data" / "chroma"
     dream_companies_path: Path = REPO_ROOT / "data" / "dream_companies.json"
     seed_companies_path: Path = REPO_ROOT / "data" / "seed_companies.json"

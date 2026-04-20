@@ -270,3 +270,58 @@ class JobStore:
         ).fetchall()
         columns = [desc[0] for desc in self.conn.description]
         return [_row_to_dict(r, columns) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Health check
+    # ------------------------------------------------------------------
+    def health_check(self) -> dict:
+        """Check DB integrity: checkpoint WAL, verify schema version, report table counts.
+
+        Returns a dict with:
+            status: 'ok' or 'warn'
+            checkpoint: result of WAL checkpoint
+            schema_version_count: number of applied migrations
+            tables: {table_name: row_count} for key tables
+        """
+        assert self.conn is not None
+
+        # 1. Checkpoint WAL
+        checkpoint_result = "skipped"
+        if str(self.db_path) != ":memory:":
+            try:
+                self.conn.execute("CHECKPOINT")
+                checkpoint_result = "ok"
+            except Exception as e:
+                checkpoint_result = f"error: {e}"
+
+        # 2. Schema version count
+        try:
+            version_rows = self.conn.execute(
+                "SELECT COUNT(*) FROM schema_migrations"
+            ).fetchone()
+            schema_version_count = version_rows[0] if version_rows else 0
+        except Exception:
+            schema_version_count = 0
+
+        # 3. Table row counts
+        tables = {}
+        for table_name in ("jobs", "companies", "company_attractions", "job_sources", "events", "scores"):
+            try:
+                count_row = self.conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                tables[table_name] = count_row[0] if count_row else 0
+            except Exception:
+                tables[table_name] = "missing"
+
+        # 4. Determine status
+        status = "ok"
+        if checkpoint_result.startswith("error"):
+            status = "warn"
+        if schema_version_count < 2:
+            status = "warn"
+
+        return {
+            "status": status,
+            "checkpoint": checkpoint_result,
+            "schema_version_count": schema_version_count,
+            "tables": tables,
+        }

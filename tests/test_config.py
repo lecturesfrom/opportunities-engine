@@ -13,7 +13,9 @@ def test_target_titles_loaded():
 
 def test_paths_anchored_to_repo():
     assert settings.repo_root.name == "opportunities-engine"
-    assert settings.database_path.parent.name == "data"
+    # DB path now lives under ~/Library/Application Support/ (Phase C)
+    assert "opportunities-engine" in str(settings.database_path)
+    assert settings.database_path.name == "jobs.duckdb"
     assert settings.chroma_path.parent.name == "data"
 
 

@@ -22,9 +22,8 @@ env/
 *.pem
 *.key
 
-# Data (local only)
-*.duckdb
-*.duckdb.wal
+# Data (local only — DB now lives in ~/Library/Application Support/)
+*.duckdb*
 data/chroma/
 data/cache/
 data/scraped/
@@ -43,5 +42,3 @@ Thumbs.db
 # Logs
 *.log
 logs/
-*.duckdb*
-*.duckdb.pre-phase-b
