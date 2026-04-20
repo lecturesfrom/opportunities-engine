@@ -507,3 +507,96 @@ class TestEventAdd:
 
         assert row is not None
         assert row[0] == "recruiter"
+
+
+# ---------------------------------------------------------------------------
+# Test engine event poll-linear CLI command
+# ---------------------------------------------------------------------------
+
+
+class TestEventPollLinear:
+    """Test the `engine event poll-linear` command."""
+
+    def test_dry_run_exits_0_and_prints_summary(self, tmp_path: Path) -> None:
+        """--dry-run exits 0 and prints the summary dict without writing events."""
+        db_path = str(tmp_path / "test.duckdb")
+
+        # Create the DB (empty is fine for dry-run with mocked poll_linear)
+        with JobStore(db_path):
+            pass
+
+        runner = CliRunner()
+
+        fake_summary = {
+            "issues_seen": 2,
+            "state_events_emitted": 1,
+            "comment_events_emitted": 0,
+            "watermark_advanced_to": "2026-04-20T12:00:00+00:00",
+        }
+
+        with (
+            patch("opportunities_engine.cli.settings") as mock_settings,
+            patch(
+                "opportunities_engine.events.linear_listener.poll_linear",
+                return_value=fake_summary,
+            ),
+        ):
+            mock_settings.database_path = db_path
+            mock_settings.linear_project_id = "proj-abc"
+            result = runner.invoke(event, ["poll-linear", "--dry-run"])
+
+        assert result.exit_code == 0, result.output
+        # Summary keys appear in output
+        assert "issues_seen" in result.output or "watermark" in result.output or "2" in result.output
+
+    def test_missing_project_id_errors_helpfully(self, tmp_path: Path) -> None:
+        """No --project-id and no settings.linear_project_id → non-zero exit with message."""
+        db_path = str(tmp_path / "test.duckdb")
+
+        with JobStore(db_path):
+            pass
+
+        runner = CliRunner()
+
+        with patch("opportunities_engine.cli.settings") as mock_settings:
+            mock_settings.database_path = db_path
+            mock_settings.linear_project_id = None
+            result = runner.invoke(event, ["poll-linear"])
+
+        assert result.exit_code != 0
+        # Error message should mention project-id
+        assert "project" in result.output.lower() or "LINEAR_PROJECT_ID" in result.output
+
+    def test_explicit_project_id_flag_overrides_settings(self, tmp_path: Path) -> None:
+        """--project-id flag is passed through to poll_linear."""
+        db_path = str(tmp_path / "test.duckdb")
+
+        with JobStore(db_path):
+            pass
+
+        runner = CliRunner()
+
+        captured: dict = {}
+
+        def fake_poll_linear(store, project_id, *, dry_run=False, **kwargs):  # type: ignore[no-untyped-def]
+            captured["project_id"] = project_id
+            return {
+                "issues_seen": 0,
+                "state_events_emitted": 0,
+                "comment_events_emitted": 0,
+                "watermark_advanced_to": "2026-04-20T12:00:00+00:00",
+            }
+
+        with (
+            patch("opportunities_engine.cli.settings") as mock_settings,
+            patch(
+                "opportunities_engine.events.linear_listener.poll_linear",
+                side_effect=fake_poll_linear,
+            ),
+        ):
+            mock_settings.database_path = db_path
+            mock_settings.linear_project_id = None
+            result = runner.invoke(event, ["poll-linear", "--project-id", "explicit-proj-id"])
+
+        assert result.exit_code == 0, result.output
+        assert captured.get("project_id") == "explicit-proj-id"

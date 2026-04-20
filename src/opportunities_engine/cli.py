@@ -250,5 +250,32 @@ def event_add(job_id: int, event_type: str, notes: str | None, actor: str) -> No
     )
 
 
+@event.command("poll-linear")
+@click.option(
+    "--project-id",
+    default=None,
+    help="Linear project id. Defaults to settings.linear_project_id if set.",
+)
+@click.option("--dry-run", is_flag=True, help="Show what would emit without writing.")
+def poll_linear_cmd(project_id: str | None, dry_run: bool) -> None:
+    """Poll Linear for issue state changes and emit events."""
+    from opportunities_engine.events.linear_listener import poll_linear
+
+    resolved_project_id = project_id or settings.linear_project_id
+    if resolved_project_id is None:
+        console.print(
+            "[red]Error:[/red] No --project-id provided and settings.linear_project_id is not set. "
+            "Set LINEAR_PROJECT_ID in your .env or pass --project-id."
+        )
+        raise SystemExit(1)
+
+    with JobStore(settings.database_path) as store:
+        summary = poll_linear(store, resolved_project_id, dry_run=dry_run)
+
+    from rich import print as rprint
+
+    rprint(summary)
+
+
 if __name__ == "__main__":
     main()

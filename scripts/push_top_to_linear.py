@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import urllib.request
 from pathlib import Path
 
 import click
@@ -14,6 +13,7 @@ from rich.console import Console
 
 from opportunities_engine.config import settings
 from opportunities_engine.events import emit_event, PUSHED_TO_LINEAR
+from opportunities_engine.integrations.linear import gql
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
 
 console = Console()
@@ -31,21 +31,6 @@ def _env(key: str, default: str = "") -> str:
             if line.startswith(f"{key}="):
                 return line.split("=", 1)[1].strip()
     return default
-
-
-def gql(query: str, variables: dict | None = None) -> dict:
-    api_key = _env("LINEAR_API_KEY")
-    body = {"query": query}
-    if variables:
-        body["variables"] = variables
-    req = urllib.request.Request(
-        "https://api.linear.app/graphql",
-        data=json.dumps(body).encode(),
-        headers={"Authorization": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
 
 
 def get_team_and_project() -> tuple[str, str, str]:
