@@ -62,7 +62,7 @@ def get_project_issues(
 
     if since is not None:
         query = """
-        query($projectId: String!, $since: DateComparator) {
+        query($projectId: String!, $since: DateTimeOrDuration) {
           project(id: $projectId) {
             issues(first: 250, filter: {updatedAt: {gte: $since}}) {
               nodes {
