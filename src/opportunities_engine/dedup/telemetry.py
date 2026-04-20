@@ -44,6 +44,7 @@ def emit_dedup_event(
         fh.write(json.dumps(record) + "\n")
 
     # For review_flagged: also INSERT into events table
+    # TODO: migrate to events.emitter.emit_event in a follow-up
     if result.outcome == "review_flagged":
         assert store.conn is not None
         detail = {

@@ -37,6 +37,20 @@ def _row_to_dict(row: tuple, columns: list[str]) -> dict:
     return d
 
 
+def get_job_id_by_url(store: "JobStore", url: str) -> int | None:
+    """Return the job_id for this URL, or None if not in jobs table.
+
+    Matches on url_hash for robustness across casing/trailing-slash variants.
+    """
+    assert store.conn is not None
+    url_hash_val = _url_hash(url)
+    row = store.conn.execute(
+        "SELECT id FROM jobs WHERE url_hash = $1 LIMIT 1",
+        [url_hash_val],
+    ).fetchone()
+    return int(row[0]) if row is not None else None
+
+
 class JobStore:
     """Context-manager wrapper around a DuckDB database."""
 

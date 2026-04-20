@@ -124,6 +124,7 @@ class Settings(BaseSettings):
     linear_api_key: Optional[str] = None
     linear_workspace_slug: Optional[str] = None
     linear_team_name: Optional[str] = None
+    linear_project_id: Optional[str] = None
     discord_webhook_url: Optional[str] = None
     heyreach_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
