@@ -253,6 +253,27 @@ class Test001InitialSchema:
         applied = run_migrations(migrated_conn, project_migrations)
         assert applied == []
 
+    def test_006_adds_scores_columns(self, migrated_conn: duckdb.DuckDBPyConnection):
+        """Migration 006 adds rank_position + component_scores columns to scores.
+        (scoring_detail already existed from migration 001 and is reused.)"""
+        cols = {c[0] for c in migrated_conn.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'scores'"
+        ).fetchall()}
+        # Columns added by migration 006
+        expected_new = {"rank_position", "component_scores"}
+        assert expected_new.issubset(cols), (
+            f"Missing columns added by migration 006: {expected_new - cols}"
+        )
+
+    def test_006_recorded_in_schema_migrations(self, migrated_conn: duckdb.DuckDBPyConnection):
+        """Migration 006 is recorded in schema_migrations."""
+        row = migrated_conn.execute(
+            "SELECT version, name FROM schema_migrations WHERE version = '006'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "006"
+        assert row[1] == "scores_table"
+
 
 # ---------------------------------------------------------------------------
 # Data preservation

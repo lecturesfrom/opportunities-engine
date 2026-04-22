@@ -6,6 +6,7 @@ to work unchanged.
 """
 
 from opportunities_engine.events.emitter import emit_event
+from opportunities_engine.events.queries import get_terminally_closed_job_ids
 from opportunities_engine.events.vocab import (
     ALL_EVENT_TYPES,
     APPLIED,
@@ -22,6 +23,7 @@ from opportunities_engine.events.vocab import (
 
 __all__ = [
     "emit_event",
+    "get_terminally_closed_job_ids",
     "ALL_EVENT_TYPES",
     "APPLIED",
     "INTERVIEW",

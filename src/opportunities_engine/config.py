@@ -41,7 +41,7 @@ def get_default_logs_path() -> Path:
 
 # User-curated GTME + adjacent role universe (flat, no weights)
 DEFAULT_TARGET_TITLES: list[str] = [
-    # Core GTME
+    # Core GTM / Revenue
     "GTM Engineer",
     "Go-To-Market Engineer",
     "Founding GTM",
@@ -55,46 +55,40 @@ DEFAULT_TARGET_TITLES: list[str] = [
     "Director of Revenue Systems",
     "RevOps Engineer",
     "Revenue Operations Consultant",
-    # Technical / Deployed
-    "Forward Deployed Engineer",
-    "Solutions Engineer",
-    "Sales Engineer",
-    "Founding Sales Engineer",
-    "Customer Engineer",
-    "AI Solutions Engineer",
-    "AI Sales Engineer",
-    "Technical Account Manager",
+    "Principal GTM Engineer",
+    "Staff GTM Engineer",
+    "VP Revenue Systems",
+    "AI Transformation Lead",
+    "Revenue Solution Architect",
     # Growth
     "Growth Engineer",
     "Founding Growth",
     "Head of Growth",
     "Growth Lead",
     "Growth Hacker",
-    # Builder / Product Path
-    "Product Engineer",
-    "Product Manager",
-    "Associate Product Manager",
-    "Technical Product Manager",
-    "Product Lead",
     "Growth Product Manager",
-    "Founding Engineer",
+    # Growth-adjacent engineering
     "Software Engineer (Growth)",
     "Engineer, Growth",
     "Full Stack Engineer (GTM-adjacent startup)",
-    # Sales & Commercial
-    "Sales Lead",
-    "Account Executive (Technical)",
-    "Founding AE",
-    "Revenue Lead",
-    "Commercial Lead",
-    "Business Development Engineer",
-    # Emerging / Watch List
-    "Principal GTM Engineer",
-    "Staff GTM Engineer",
-    "VP Revenue Systems",
-    "AI Transformation Lead",
-    "Revenue Solution Architect",
+    # Product — entry-level only
+    "Associate Product Manager",
+    "APM",
+    "Product Management Intern",
+    "Product Intern",
+    "PM Intern",
+    "Junior Product Manager",
+    "Product Analyst",
+    "Rotational Product Manager",
+    "Product Operations Analyst",
+    # Sales / BDR — GTM-coded
     "AI BDR",
+    "BDR",
+    "SDR",
+    "Sales Development Representative",
+    "Business Development Engineer",
+    "GTM Lead",
+    "Revenue Lead",
 ]
 
 # US/Remote gate
@@ -138,7 +132,9 @@ class Settings(BaseSettings):
     dream_companies_path: Path = REPO_ROOT / "data" / "dream_companies.json"
     seed_companies_path: Path = REPO_ROOT / "data" / "seed_companies.json"
     us_remote_only: bool = True
-    min_relevance_score: float = 0.16
+    min_relevance_score: float = 0.20  # Bumped 0.16 → 0.20 with F.1 curated title list.
+    # Bump on any algorithm change (Phase F consumer: scores.ranker_version audit).
+    ranker_version: str = "f.2-tfidf-v1"
     max_daily_shortlist: int = 25
 
     # Dedup pipeline thresholds

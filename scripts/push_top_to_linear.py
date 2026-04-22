@@ -14,6 +14,7 @@ from rich.console import Console
 from opportunities_engine.config import settings
 from opportunities_engine.events import emit_event, PUSHED_TO_LINEAR
 from opportunities_engine.integrations.linear import gql
+from opportunities_engine.semantic.remote_filter import is_remote as _is_remote
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
 
 console = Console()
@@ -106,12 +107,18 @@ def main(top: int, dry_run: bool) -> None:
 
     created = 0
     skipped = 0
+    skipped_non_remote = 0
 
     for job in jobs:
         title = make_title(job)
         key = title.strip().lower()
         if key in existing:
             skipped += 1
+            continue
+
+        if not _is_remote(job):
+            skipped_non_remote += 1
+            console.print(f"[dim]SKIP non-remote[/dim] {title} (location={job.get('location', '')!r})")
             continue
 
         if dry_run:
@@ -149,7 +156,10 @@ def main(top: int, dry_run: bool) -> None:
                     },
                 )
 
-    console.print(f"\nDone: created={created}, skipped_existing={skipped}, scanned={len(jobs)}")
+    console.print(
+        f"\nDone: created={created}, skipped_existing={skipped}, "
+        f"skipped_non_remote={skipped_non_remote}, scanned={len(jobs)}"
+    )
 
 
 if __name__ == "__main__":
