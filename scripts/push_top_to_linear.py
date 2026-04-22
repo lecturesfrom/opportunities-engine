@@ -20,6 +20,22 @@ console = Console()
 REPO = Path(__file__).resolve().parents[1]
 RANKED = REPO / "data" / "ranked_jobs.json"
 
+_NON_REMOTE_MARKERS = ("hybrid", "in-office", "in office", "onsite", "on-site", "on site")
+
+
+def _is_remote(job: dict) -> bool:
+    """Hard gate: a job must declare itself remote OR have no non-remote markers."""
+    if job.get("is_remote") is True:
+        return True
+    loc = (job.get("location") or "").lower()
+    if any(m in loc for m in _NON_REMOTE_MARKERS):
+        return False
+    # Conservative default: if is_remote is None and location mentions remote words, allow
+    if "remote" in loc or "anywhere" in loc:
+        return True
+    # Unknown — drop. User can override via engine event add if needed.
+    return False
+
 
 def _env(key: str, default: str = "") -> str:
     # simple .env loader fallback
@@ -106,12 +122,18 @@ def main(top: int, dry_run: bool) -> None:
 
     created = 0
     skipped = 0
+    skipped_non_remote = 0
 
     for job in jobs:
         title = make_title(job)
         key = title.strip().lower()
         if key in existing:
             skipped += 1
+            continue
+
+        if not _is_remote(job):
+            skipped_non_remote += 1
+            console.print(f"[dim]SKIP non-remote[/dim] {title} (location={job.get('location', '')!r})")
             continue
 
         if dry_run:
@@ -149,7 +171,10 @@ def main(top: int, dry_run: bool) -> None:
                     },
                 )
 
-    console.print(f"\nDone: created={created}, skipped_existing={skipped}, scanned={len(jobs)}")
+    console.print(
+        f"\nDone: created={created}, skipped_existing={skipped}, "
+        f"skipped_non_remote={skipped_non_remote}, scanned={len(jobs)}"
+    )
 
 
 if __name__ == "__main__":

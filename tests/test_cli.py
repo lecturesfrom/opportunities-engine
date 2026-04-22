@@ -260,7 +260,7 @@ class TestDedupStats:
         runner = CliRunner()
 
         with patch("opportunities_engine.cli.get_default_logs_path", return_value=tmp_path):
-            result = runner.invoke(dedup, ["stats"])
+            result = runner.invoke(dedup, ["stats", "--last", "3650d"])
 
         assert result.exit_code == 0
         assert "new_job" in result.output
@@ -283,7 +283,7 @@ class TestDedupStats:
         runner = CliRunner()
 
         with patch("opportunities_engine.cli.get_default_logs_path", return_value=tmp_path):
-            result = runner.invoke(dedup, ["stats"])
+            result = runner.invoke(dedup, ["stats", "--last", "3650d"])
 
         assert result.exit_code == 0
         # Trust flipped count should be 2

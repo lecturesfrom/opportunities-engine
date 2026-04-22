@@ -186,8 +186,8 @@ class TestPushTopToLinear:
                 "title": "Unknown Role",
                 "company": "Co A",
                 "source": "greenhouse",
-                "is_remote": False,
-                "location": "NYC",
+                "is_remote": True,
+                "location": "Remote",
                 "similarity": 0.6,
                 "description": "desc",
             }
@@ -226,3 +226,51 @@ class TestPushTopToLinear:
             ).fetchone()[0]
 
         assert count == 0
+
+
+class TestRemoteGate:
+    """Unit tests for the _is_remote hard gate in push_top_to_linear.py."""
+
+    def _call(self, **kwargs: object) -> bool:
+        from scripts.push_top_to_linear import _is_remote
+        return _is_remote(kwargs)
+
+    def test_is_remote_true_flag_passes(self) -> None:
+        """Job with is_remote=True always passes, regardless of location."""
+        assert self._call(is_remote=True, location="New York, NY") is True
+
+    def test_hybrid_location_fails(self) -> None:
+        """Job with 'hybrid' in location is rejected."""
+        assert self._call(is_remote=None, location="San Francisco, CA (Hybrid)") is False
+
+    def test_onsite_location_fails(self) -> None:
+        """Job with 'onsite' in location is rejected."""
+        assert self._call(is_remote=None, location="Austin TX — Onsite") is False
+
+    def test_in_office_location_fails(self) -> None:
+        """Job with 'in-office' in location is rejected."""
+        assert self._call(is_remote=None, location="Seattle, WA — In-Office") is False
+
+    def test_on_site_hyphenated_fails(self) -> None:
+        """Job with 'on-site' in location is rejected."""
+        assert self._call(is_remote=False, location="Chicago, IL — on-site") is False
+
+    def test_remote_location_with_none_flag_passes(self) -> None:
+        """Job with location='Remote' and is_remote=None passes."""
+        assert self._call(is_remote=None, location="Remote") is True
+
+    def test_anywhere_location_passes(self) -> None:
+        """Job with 'anywhere' in location passes."""
+        assert self._call(is_remote=None, location="Work from anywhere") is True
+
+    def test_unknown_location_no_remote_markers_fails(self) -> None:
+        """Job with is_remote=None and no remote signals is dropped (conservative default)."""
+        assert self._call(is_remote=None, location="Boston, MA") is False
+
+    def test_missing_location_field_fails(self) -> None:
+        """Job with no location key and is_remote=None is dropped."""
+        assert self._call(is_remote=None) is False
+
+    def test_is_remote_false_with_non_remote_location_fails(self) -> None:
+        """Job with is_remote=False and 'hybrid' location is rejected (non-remote marker wins)."""
+        assert self._call(is_remote=False, location="hybrid") is False
