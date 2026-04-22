@@ -527,3 +527,133 @@ class TestDecisionLogic:
         assert decisions[url_p] == "promoted"
         assert decisions[url_s] == "shortlisted"
         assert decisions[url_r] == "rejected"
+
+    # ------------------------------------------------------------------
+    # Phase F.3 additions: rejected_title, rejected_geo,
+    # promoted_whitelist_remote
+    # ------------------------------------------------------------------
+
+    def test_fde_title_high_score_is_rejected_title(self, tmp_path: Path) -> None:
+        """FDE in title → rejected_title regardless of score or remote status."""
+        url = "https://example.com/job/fde"
+        ranked = [
+            _make_ranked_job(
+                url, title="Founding FDE @ CiceroAI", similarity=0.85,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "rejected_title"
+
+    def test_forward_deployed_title_rejected(self, tmp_path: Path) -> None:
+        """'Forward Deployed Engineer' title → rejected_title."""
+        url = "https://example.com/job/fwd-dep"
+        ranked = [
+            _make_ranked_job(
+                url, title="Forward Deployed Engineer", similarity=0.90,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "rejected_title"
+
+    def test_latam_in_title_high_score_is_rejected_geo(self, tmp_path: Path) -> None:
+        """LatAm in job title → rejected_geo regardless of score."""
+        url = "https://example.com/job/latam"
+        ranked = [
+            _make_ranked_job(
+                url, title="Senior GTM Engineer (LatAm)", similarity=0.80,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "rejected_geo"
+
+    def test_latam_in_location_high_score_is_rejected_geo(self, tmp_path: Path) -> None:
+        """LatAm in location field → rejected_geo."""
+        url = "https://example.com/job/latam-loc"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", similarity=0.80,
+                is_remote=False, location="LatAm"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "rejected_geo"
+
+    def test_vercel_sf_location_is_promoted_whitelist_remote(self, tmp_path: Path) -> None:
+        """Vercel + San Francisco location (no remote flag) → promoted_whitelist_remote."""
+        url = "https://example.com/job/vercel-sf"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", company="Vercel", similarity=0.75,
+                is_remote=False, location="San Francisco, CA"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "promoted_whitelist_remote"
+
+    def test_vercel_explicit_remote_is_promoted_not_whitelist_variant(
+        self, tmp_path: Path
+    ) -> None:
+        """Vercel + explicit Remote location → promoted (is_remote=True short-circuits)."""
+        url = "https://example.com/job/vercel-remote"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", company="Vercel", similarity=0.75,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "promoted"
+
+    def test_normal_remote_high_score_is_promoted_unchanged(self, tmp_path: Path) -> None:
+        """Unchanged behavior: remote + high score → promoted."""
+        url = "https://example.com/job/normal-remote"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", company="Some Startup", similarity=0.70,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "promoted"
+
+    def test_non_remote_unlisted_company_high_score_is_shortlisted(
+        self, tmp_path: Path
+    ) -> None:
+        """Unchanged behavior: non-remote + unlisted company + high score → shortlisted."""
+        url = "https://example.com/job/shortlisted-unlisted"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", company="Horizonia", similarity=0.70,
+                is_remote=False, location="Austin, TX"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "shortlisted"
+
+    def test_low_score_regardless_of_company_is_rejected(self, tmp_path: Path) -> None:
+        """Low score (below threshold) → rejected, even for a whitelisted company."""
+        url = "https://example.com/job/low-score-vercel"
+        ranked = [
+            _make_ranked_job(
+                url, title="GTM Engineer", company="Vercel", similarity=0.10,
+                is_remote=True, location="Remote"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        assert decisions[url] == "rejected"
+
+    def test_title_exclusion_takes_priority_over_geo(self, tmp_path: Path) -> None:
+        """Title exclusion fires before geo check (first match wins)."""
+        url = "https://example.com/job/fde-latam"
+        ranked = [
+            _make_ranked_job(
+                url, title="Founding FDE (LatAm)", similarity=0.80,
+                is_remote=True, location="LatAm"
+            )
+        ]
+        decisions = self._run_and_get_decisions(tmp_path, ranked, min_relevance_score=0.20)
+        # Title pattern fires first
+        assert decisions[url] == "rejected_title"

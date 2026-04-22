@@ -32,3 +32,12 @@ def is_remote(job: dict) -> bool:
         return True
     # Unknown — drop.
     return False
+
+
+def is_remote_or_whitelisted(job: dict, remote_first_companies: list[str]) -> bool:
+    """Like is_remote(), but returns True for companies in the
+    remote-first whitelist regardless of location/flag."""
+    from opportunities_engine.semantic.quality_filters import is_remote_first_company
+    if is_remote_first_company(job.get("company", ""), remote_first_companies):
+        return True
+    return is_remote(job)

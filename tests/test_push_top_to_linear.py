@@ -276,6 +276,146 @@ class TestRemoteGate:
         assert self._call(is_remote=False, location="hybrid") is False
 
 
+class TestDecisionFiltering:
+    """Tests for the F.3 decision-based gate in push_top_to_linear.main().
+
+    Verifies that:
+    - decision='promoted' and 'promoted_whitelist_remote' are pushed.
+    - All other decision values are skipped without calling gql.
+    - Legacy jobs (no decision field) fall back to the old _is_remote gate.
+    """
+
+    def _make_job(self, decision: str | None = None, **kwargs: object) -> dict:
+        """Build a minimal job dict for ranked_jobs.json."""
+        base: dict = {
+            "url": "https://example.com/job/test",
+            "title": "GTM Engineer",
+            "company": "Test Co",
+            "source": "greenhouse",
+            "is_remote": True,
+            "location": "Remote",
+            "similarity": 0.75,
+        }
+        base.update(kwargs)
+        if decision is not None:
+            base["decision"] = decision
+        return base
+
+    def _run_push(
+        self,
+        tmp_path: Path,
+        jobs: list[dict],
+        gql_response: dict | None = None,
+    ) -> tuple[object, object]:
+        """Run push_top_to_linear.main with a fake ranked_jobs.json.
+
+        Returns (CliRunner result, mock_gql).
+        """
+        db_path = tmp_path / "test.duckdb"
+        ranked_json = tmp_path / "ranked_jobs.json"
+        ranked_json.write_text(json.dumps(jobs))
+
+        if gql_response is None:
+            gql_response = _make_gql_response()
+
+        # Seed any referenced job URLs in the DB
+        with JobStore(str(db_path)) as store:
+            for job in jobs:
+                _insert_job(store, job["url"], job.get("title", "Test Job"))
+
+        from unittest.mock import patch, MagicMock
+        mock_gql = MagicMock(return_value=gql_response)
+
+        with (
+            patch("scripts.push_top_to_linear.RANKED", ranked_json),
+            patch("scripts.push_top_to_linear.gql", mock_gql),
+            patch(
+                "scripts.push_top_to_linear.existing_issue_titles", return_value=set()
+            ),
+            patch("scripts.push_top_to_linear.settings") as mock_settings,
+            patch("scripts.push_top_to_linear.console"),
+            patch("scripts.push_top_to_linear.make_description", return_value="desc"),
+        ):
+            mock_settings.database_path = str(db_path)
+            from scripts.push_top_to_linear import main
+
+            runner = CliRunner()
+            result = runner.invoke(main, [])
+
+        return result, mock_gql
+
+    def test_decision_promoted_is_pushed(self, tmp_path: Path) -> None:
+        """Job with decision='promoted' is pushed to Linear."""
+        jobs = [self._make_job(decision="promoted")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_called_once()
+
+    def test_decision_promoted_whitelist_remote_is_pushed(self, tmp_path: Path) -> None:
+        """Job with decision='promoted_whitelist_remote' is also pushed."""
+        jobs = [self._make_job(decision="promoted_whitelist_remote", is_remote=False, location="San Francisco")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_called_once()
+
+    def test_decision_rejected_title_is_skipped(self, tmp_path: Path) -> None:
+        """Job with decision='rejected_title' is skipped (no gql call)."""
+        jobs = [self._make_job(decision="rejected_title")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_not_called()
+
+    def test_decision_rejected_geo_is_skipped(self, tmp_path: Path) -> None:
+        """Job with decision='rejected_geo' is skipped."""
+        jobs = [self._make_job(decision="rejected_geo")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_not_called()
+
+    def test_decision_rejected_is_skipped(self, tmp_path: Path) -> None:
+        """Job with decision='rejected' is skipped."""
+        jobs = [self._make_job(decision="rejected")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_not_called()
+
+    def test_decision_shortlisted_is_skipped(self, tmp_path: Path) -> None:
+        """Job with decision='shortlisted' is skipped."""
+        jobs = [self._make_job(decision="shortlisted")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_not_called()
+
+    def test_mixed_decisions_only_promoted_pushed(self, tmp_path: Path) -> None:
+        """Only promoted and promoted_whitelist_remote jobs are pushed; others skipped."""
+        jobs = [
+            {**self._make_job(decision="promoted"), "url": "https://example.com/job/a", "title": "Job A"},
+            {**self._make_job(decision="promoted_whitelist_remote"), "url": "https://example.com/job/b", "title": "Job B", "is_remote": False, "location": "SF"},
+            {**self._make_job(decision="rejected_title"), "url": "https://example.com/job/c", "title": "Job C"},
+            {**self._make_job(decision="rejected_geo"), "url": "https://example.com/job/d", "title": "Job D"},
+            {**self._make_job(decision="rejected"), "url": "https://example.com/job/e", "title": "Job E"},
+            {**self._make_job(decision="shortlisted"), "url": "https://example.com/job/f", "title": "Job F"},
+        ]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        # Only the 2 promoted jobs trigger a gql call (issueCreate)
+        assert mock_gql.call_count == 2
+
+    def test_legacy_job_no_decision_remote_passes(self, tmp_path: Path) -> None:
+        """Legacy job with no 'decision' field and is_remote=True uses _is_remote fallback."""
+        jobs = [self._make_job(decision=None, is_remote=True, location="Remote")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_called_once()
+
+    def test_legacy_job_no_decision_non_remote_skipped(self, tmp_path: Path) -> None:
+        """Legacy job with no 'decision' field and non-remote location is skipped."""
+        jobs = [self._make_job(decision=None, is_remote=None, location="New York, NY")]
+        result, mock_gql = self._run_push(tmp_path, jobs)
+        assert result.exit_code == 0, result.output
+        mock_gql.assert_not_called()
+
+
 class TestRemoteFilterModule:
     """Tests for the shared semantic/remote_filter.py module (Phase F.2).
 
