@@ -10,8 +10,9 @@ from rich.console import Console
 from rich.table import Table
 
 from opportunities_engine.config import settings
-from opportunities_engine.events import emit_event, SCORED
+from opportunities_engine.events import emit_event, get_terminally_closed_job_ids, SCORED
 from opportunities_engine.semantic.ranker import rank_jobs_local
+from opportunities_engine.semantic.remote_filter import is_remote
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
 
 logger = logging.getLogger(__name__)
@@ -29,18 +30,80 @@ def main(top: int, threshold: float, save: bool) -> None:
     with JobStore(settings.database_path) as store:
         jobs = store.get_jobs(limit=99999)
 
-    if not jobs:
-        console.print("[red]No jobs in DB. Run daily_ingest first.[/red]")
-        return
+        if not jobs:
+            console.print("[red]No jobs in DB. Run daily_ingest first.[/red]")
+            return
 
-    ranked = rank_jobs_local(jobs, top_k=top, min_score=threshold)
+        # --- Step 3: Exclude terminally-closed jobs (OFFER / REJECTED / WITHDREW) ---
+        excluded_ids = get_terminally_closed_job_ids(store)
+        if excluded_ids:
+            console.print(
+                f"[dim]Excluding {len(excluded_ids)} terminally-closed job(s) "
+                f"(offer/rejected/withdrew)[/dim]"
+            )
+        jobs = [j for j in jobs if int(j.get("id", -1)) not in excluded_ids]
 
-    if not ranked:
-        console.print("[yellow]No jobs above threshold. Try lowering --threshold[/yellow]")
-        return
+        # --- Step 4: Run ranker ---
+        ranked = rank_jobs_local(jobs, top_k=top, min_score=threshold)
 
-    # Emit SCORED events for each ranked job
-    with JobStore(settings.database_path) as store:
+        if not ranked:
+            console.print("[yellow]No jobs above threshold. Try lowering --threshold[/yellow]")
+            return
+
+        # --- Step 5: Write scores rows (one per ranked job) ---
+        for i, job in enumerate(ranked):
+            job_id = get_job_id_by_url(store, job["url"])
+            if job_id is None:
+                logger.debug(
+                    "No job_id found for URL %s — skipping scores row", job["url"]
+                )
+                continue
+
+            score = job["similarity"]
+            job_is_remote = is_remote(job)
+
+            if score >= settings.min_relevance_score and job_is_remote:
+                decision = "promoted"
+            elif score >= settings.min_relevance_score:
+                decision = "shortlisted"
+            else:
+                decision = "rejected"
+
+            # TODO(Phase F.3): enrich component_scores once ranker exposes breakdown.
+            component_scores_json = json.dumps(
+                {
+                    "base_score": score,
+                    "matched_target_titles": [],
+                    "breakdown_available": False,
+                }
+            )
+            scoring_detail_json = json.dumps(
+                {
+                    "title": job["title"],
+                    "company": job["company"],
+                    "url": job["url"],
+                }
+            )
+
+            store.conn.execute(  # type: ignore[union-attr]
+                """
+                INSERT INTO scores
+                    (job_id, ranker_version, score, rank_position,
+                     component_scores, decision, scoring_detail)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """,
+                [
+                    job_id,
+                    settings.ranker_version,
+                    score,
+                    i,
+                    component_scores_json,
+                    decision,
+                    scoring_detail_json,
+                ],
+            )
+
+        # --- Step 6: Emit SCORED events (existing loop) ---
         for i, job in enumerate(ranked):
             job_id = get_job_id_by_url(store, job["url"])
             if job_id is None:
@@ -53,6 +116,7 @@ def main(top: int, threshold: float, save: bool) -> None:
                 detail={"score": job["similarity"], "rank_position": i},
             )
 
+    # --- Step 7: Print table + save ---
     table = Table(title=f"🔥 Top {len(ranked)} Relevant GTM Roles", show_lines=True)
     table.add_column("#", style="dim", width=3)
     table.add_column("Score", style="bold green", width=6)

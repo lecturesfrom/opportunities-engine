@@ -274,3 +274,45 @@ class TestRemoteGate:
     def test_is_remote_false_with_non_remote_location_fails(self) -> None:
         """Job with is_remote=False and 'hybrid' location is rejected (non-remote marker wins)."""
         assert self._call(is_remote=False, location="hybrid") is False
+
+
+class TestRemoteFilterModule:
+    """Tests for the shared semantic/remote_filter.py module (Phase F.2).
+
+    The push_top_to_linear.py remote gate now delegates to this module.
+    These tests import is_remote directly from the canonical source.
+    """
+
+    def _call(self, **kwargs: object) -> bool:
+        from opportunities_engine.semantic.remote_filter import is_remote
+        return is_remote(kwargs)  # type: ignore[arg-type]
+
+    def test_is_remote_true_flag_passes(self) -> None:
+        assert self._call(is_remote=True, location="New York, NY") is True
+
+    def test_hybrid_location_fails(self) -> None:
+        assert self._call(is_remote=None, location="San Francisco, CA (Hybrid)") is False
+
+    def test_onsite_location_fails(self) -> None:
+        assert self._call(is_remote=None, location="Austin TX — Onsite") is False
+
+    def test_in_office_location_fails(self) -> None:
+        assert self._call(is_remote=None, location="Seattle, WA — In-Office") is False
+
+    def test_on_site_hyphenated_fails(self) -> None:
+        assert self._call(is_remote=False, location="Chicago, IL — on-site") is False
+
+    def test_remote_location_with_none_flag_passes(self) -> None:
+        assert self._call(is_remote=None, location="Remote") is True
+
+    def test_anywhere_location_passes(self) -> None:
+        assert self._call(is_remote=None, location="Work from anywhere") is True
+
+    def test_unknown_location_no_remote_markers_fails(self) -> None:
+        assert self._call(is_remote=None, location="Boston, MA") is False
+
+    def test_missing_location_field_fails(self) -> None:
+        assert self._call(is_remote=None) is False
+
+    def test_is_remote_false_with_non_remote_location_fails(self) -> None:
+        assert self._call(is_remote=False, location="hybrid") is False

@@ -133,6 +133,8 @@ class Settings(BaseSettings):
     seed_companies_path: Path = REPO_ROOT / "data" / "seed_companies.json"
     us_remote_only: bool = True
     min_relevance_score: float = 0.20  # Bumped 0.16 → 0.20 with F.1 curated title list.
+    # Bump on any algorithm change (Phase F consumer: scores.ranker_version audit).
+    ranker_version: str = "f.2-tfidf-v1"
     max_daily_shortlist: int = 25
 
     # Dedup pipeline thresholds

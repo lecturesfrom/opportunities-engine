@@ -14,27 +14,12 @@ from rich.console import Console
 from opportunities_engine.config import settings
 from opportunities_engine.events import emit_event, PUSHED_TO_LINEAR
 from opportunities_engine.integrations.linear import gql
+from opportunities_engine.semantic.remote_filter import is_remote as _is_remote
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
 
 console = Console()
 REPO = Path(__file__).resolve().parents[1]
 RANKED = REPO / "data" / "ranked_jobs.json"
-
-_NON_REMOTE_MARKERS = ("hybrid", "in-office", "in office", "onsite", "on-site", "on site")
-
-
-def _is_remote(job: dict) -> bool:
-    """Hard gate: a job must declare itself remote OR have no non-remote markers."""
-    if job.get("is_remote") is True:
-        return True
-    loc = (job.get("location") or "").lower()
-    if any(m in loc for m in _NON_REMOTE_MARKERS):
-        return False
-    # Conservative default: if is_remote is None and location mentions remote words, allow
-    if "remote" in loc or "anywhere" in loc:
-        return True
-    # Unknown — drop. User can override via engine event add if needed.
-    return False
 
 
 def _env(key: str, default: str = "") -> str:
