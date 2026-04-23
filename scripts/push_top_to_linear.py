@@ -108,6 +108,7 @@ def main(top: int, dry_run: bool) -> None:
     created = 0
     skipped = 0
     skipped_non_remote = 0
+    skipped_by_decision: dict[str, int] = {}
 
     for job in jobs:
         title = make_title(job)
@@ -116,10 +117,26 @@ def main(top: int, dry_run: bool) -> None:
             skipped += 1
             continue
 
-        if not _is_remote(job):
-            skipped_non_remote += 1
-            console.print(f"[dim]SKIP non-remote[/dim] {title} (location={job.get('location', '')!r})")
-            continue
+        # New (F.3): trust the decision field from ranked_jobs.json if present.
+        decision = job.get("decision")
+        if decision is not None:
+            if not decision.startswith("promoted"):
+                skipped_by_decision[decision] = skipped_by_decision.get(decision, 0) + 1
+                console.print(
+                    f"[dim]SKIP decision={decision}[/dim] {title} "
+                    f"(location={job.get('location', '')!r})"
+                )
+                continue
+        else:
+            # Backward-compat fallback for ranked_jobs.json files written
+            # before F.3: run the old is_remote gate.
+            if not _is_remote(job):
+                skipped_non_remote += 1
+                console.print(
+                    f"[dim]SKIP non-remote[/dim] {title} "
+                    f"(location={job.get('location', '')!r})"
+                )
+                continue
 
         if dry_run:
             console.print(f"[yellow]DRY[/yellow] {title}")
@@ -160,6 +177,9 @@ def main(top: int, dry_run: bool) -> None:
         f"\nDone: created={created}, skipped_existing={skipped}, "
         f"skipped_non_remote={skipped_non_remote}, scanned={len(jobs)}"
     )
+    if skipped_by_decision:
+        breakdown = ", ".join(f"{k}={v}" for k, v in sorted(skipped_by_decision.items()))
+        console.print(f"[dim]skipped_by_decision: {{{breakdown}}}[/dim]")
 
 
 if __name__ == "__main__":

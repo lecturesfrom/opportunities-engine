@@ -9,10 +9,16 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from opportunities_engine.config import settings
+from opportunities_engine.config import (
+    settings,
+    EXCLUDE_TITLE_MARKERS,
+    EXCLUDE_LOCATION_MARKERS,
+    REMOTE_FIRST_COMPANIES,
+)
 from opportunities_engine.events import emit_event, get_terminally_closed_job_ids, SCORED
+from opportunities_engine.semantic.quality_filters import title_excluded, location_excluded
 from opportunities_engine.semantic.ranker import rank_jobs_local
-from opportunities_engine.semantic.remote_filter import is_remote
+from opportunities_engine.semantic.remote_filter import is_remote, is_remote_or_whitelisted
 from opportunities_engine.storage.db import JobStore, get_job_id_by_url
 
 logger = logging.getLogger(__name__)
@@ -60,23 +66,47 @@ def main(top: int, threshold: float, save: bool) -> None:
                 continue
 
             score = job["similarity"]
-            job_is_remote = is_remote(job)
+            job_title = job.get("title", "")
+            job_location = job.get("location", "")
 
-            if score >= settings.min_relevance_score and job_is_remote:
-                decision = "promoted"
-            elif score >= settings.min_relevance_score:
-                decision = "shortlisted"
-            else:
+            # Evaluation order: first match wins.
+            matched_title_pattern = title_excluded(job_title, EXCLUDE_TITLE_MARKERS)
+            matched_geo_pattern = location_excluded(job_title, job_location, EXCLUDE_LOCATION_MARKERS)
+
+            if matched_title_pattern is not None:
+                decision = "rejected_title"
+                reason: str | None = matched_title_pattern
+            elif matched_geo_pattern is not None:
+                decision = "rejected_geo"
+                reason = matched_geo_pattern
+            elif score < settings.min_relevance_score:
                 decision = "rejected"
+                reason = None
+            elif is_remote_or_whitelisted(job, REMOTE_FIRST_COMPANIES):
+                if is_remote(job):
+                    decision = "promoted"
+                else:
+                    decision = "promoted_whitelist_remote"
+                reason = None
+            else:
+                decision = "shortlisted"
+                reason = None
 
-            # TODO(Phase F.3): enrich component_scores once ranker exposes breakdown.
-            component_scores_json = json.dumps(
-                {
-                    "base_score": score,
-                    "matched_target_titles": [],
-                    "breakdown_available": False,
-                }
-            )
+            # Stamp decision on the job dict so scripts/push_top_to_linear.py
+            # can trust ranked_jobs.json directly without re-running filters.
+            job["decision"] = decision
+            if reason is not None:
+                job["decision_reason"] = reason
+
+            # Enrich component_scores; include reason for rejected_* variants.
+            component_scores_dict: dict = {
+                "base_score": score,
+                "matched_target_titles": [],
+                "breakdown_available": False,
+            }
+            if reason is not None:
+                component_scores_dict["reason"] = reason
+            component_scores_json = json.dumps(component_scores_dict)
             scoring_detail_json = json.dumps(
                 {
                     "title": job["title"],

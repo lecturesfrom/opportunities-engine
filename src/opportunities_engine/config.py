@@ -91,6 +91,56 @@ DEFAULT_TARGET_TITLES: list[str] = [
     "Revenue Lead",
 ]
 
+# Phase F.3: quality filters.
+#
+# Title exclusion: any job whose title matches one of these patterns is
+# auto-rejected regardless of cosine score. Use \b word boundaries so
+# "FDE" matches "Founding FDE" but not random substrings.
+EXCLUDE_TITLE_MARKERS: list[str] = [
+    r"\bforward deployed\b",
+    r"\bfde\b",
+    r"\bsolutions? engineer\b",
+    r"\bsales engineer\b",
+    r"\bcustomer engineer\b",
+    r"\btechnical account manager\b",
+    r"\btam\b",
+    r"\bfounding engineer\b",
+    r"\bfull[- ]?stack engineer\b",
+]
+
+# Geo exclusion: matched against title AND location (case-insensitive).
+# Catches restricted postings that would waste an application attempt.
+EXCLUDE_LOCATION_MARKERS: list[str] = [
+    r"\blatam\b",
+    r"\blatin america\b",
+    r"\beurope[- ]?only\b",
+    r"\beu[- ]?only\b",
+    r"\buk[- ]?only\b",
+    r"\bcanada[- ]?only\b",
+    r"\bcanada[- ]?based\b",
+    r"\bgermany[- ]?only\b",
+    r"\buk\s*&\s*ireland\b",
+    r"\bemea\s*only\b",
+]
+
+# Remote-first companies: bypass the remote gate even when location looks
+# non-remote (e.g. "San Francisco"). Normalized via casefold; match on
+# exact normalized company name.
+REMOTE_FIRST_COMPANIES: list[str] = [
+    "Vercel",
+    "GitLab",
+    "Zapier",
+    "Automattic",
+    "Buffer",
+    "HashiCorp",
+    "Doist",
+    "Basecamp",
+    "Ghost",
+    "Clerk",
+    "PostHog",
+    "Replicate",
+]
+
 # US/Remote gate
 US_LOCATION_PATTERNS: list[str] = [
     "remote", "united states", "united states only", "usa", "u.s.", "us", "u.s.a"
