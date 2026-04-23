@@ -22,6 +22,7 @@ from opportunities_engine.dedup import upsert_job_with_source
 from opportunities_engine.ingestion.ats import ATSClient
 from opportunities_engine.ingestion.jobspy_source import scrape_all
 from opportunities_engine.ingestion.hn_hiring import HNHiringSource
+from opportunities_engine.ingestion.substack import SubstackSource
 from opportunities_engine.ingestion.wellfound import WellfoundSource
 from opportunities_engine.storage.db import JobStore
 
@@ -133,6 +134,27 @@ def ingest_wellfound(store: JobStore) -> int:
     return new_count
 
 
+def ingest_substack(store: JobStore) -> int:
+    """Scrape configured Substack hiring roundups. Returns count of NEW jobs."""
+    new_count = new_source_count = dup_count = 0
+    try:
+        source = SubstackSource()
+    except Exception as e:
+        console.print(f"  [red]✗[/] Substack init error: {e}")
+        return 0
+    for job in source.fetch():
+        job["source"] = "substack"
+        result = upsert_job_with_source(store, job, source_name="substack")
+        if result.outcome in ("new_job", "review_flagged"):
+            new_count += 1
+        elif result.outcome == "new_source":
+            new_source_count += 1
+        else:
+            dup_count += 1
+    console.print(f"  Substack: {new_count} new, {new_source_count} new_source, {dup_count} dup")
+    return new_count
+
+
 def ingest_hn_hiring(store: JobStore) -> int:
     """Scrape Hacker News 'Who is Hiring?' thread.
 
@@ -194,6 +216,7 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 @click.option("--skip-ats", is_flag=True, help="Skip ATS ingestion")
 @click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion")
 @click.option("--skip-wellfound", is_flag=True, help="Skip Wellfound scraping")
+@click.option("--skip-substack", is_flag=True, help="Skip Substack hiring-roundup scraping")
 @click.option("--skip-hn", is_flag=True, help="Skip HN Hiring ingestion")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
@@ -210,6 +233,7 @@ def main(
     skip_ats: bool,
     skip_jobspy: bool,
     skip_wellfound: bool,
+    skip_substack: bool,
     skip_hn: bool,
     hours: int,
     results: int,
@@ -252,8 +276,13 @@ def main(
             ingest_wellfound(store)
             console.print()
 
+        if not skip_substack:
+            console.print("[bold]Phase 4: Substack Hiring Roundups[/bold]")
+            ingest_substack(store)
+            console.print()
+
         if not skip_hn:
-            console.print("[bold]Phase 4: HN Hiring[/bold]")
+            console.print("[bold]Phase 5: HN Hiring[/bold]")
             ingest_hn_hiring(store)
             console.print()
 

@@ -427,6 +427,101 @@ class TestIngestWellfound:
                 assert new_count == 0
 
 
+# ---------------------------------------------------------------------------
+# Tests: ingest_substack
+# ---------------------------------------------------------------------------
+
+
+class TestIngestSubstack:
+    def test_ingest_substack_routes_through_upsert_job_with_source(self) -> None:
+        """ingest_substack calls upsert_job_with_source for each job with source_name='substack'."""
+        from scripts.daily_ingest import ingest_substack
+
+        with JobStore(":memory:") as store:
+            substack_job = {
+                "source": "substack",
+                "source_id": "post1:acme:gtm-engineer",
+                "url": "https://boards.greenhouse.io/acme/jobs/123",
+                "title": "Senior GTM Engineer",
+                "company": "Acme",
+                "location": "Remote",
+                "is_remote": True,
+                "metadata": {
+                    "post_url": "https://newsletter.substack.com/p/hiring-1",
+                    "via": "text",
+                },
+            }
+
+            with patch("scripts.daily_ingest.SubstackSource") as mock_class:
+                mock_instance = MagicMock()
+                mock_instance.fetch.return_value = [substack_job]
+                mock_class.return_value = mock_instance
+
+                with patch("scripts.daily_ingest.upsert_job_with_source") as mock_upsert:
+                    mock_upsert.return_value = UpsertResult(
+                        outcome="new_job",
+                        job_id=1,
+                        matched_job_id=None,
+                        fuzzy_score=None,
+                        trust_flipped=False,
+                        source_name="substack",
+                    )
+
+                    new_count = ingest_substack(store)
+
+                    assert mock_upsert.called
+                    call_args = mock_upsert.call_args
+                    assert call_args[1]["source_name"] == "substack"
+                    assert new_count == 1
+
+    def test_ingest_substack_sets_source_field(self) -> None:
+        """ingest_substack ensures source='substack' in the job dict."""
+        from scripts.daily_ingest import ingest_substack
+
+        with JobStore(":memory:") as store:
+            substack_job = {
+                "source_id": "post1:acme:gtm-engineer",
+                "url": "https://boards.greenhouse.io/acme/jobs/123",
+                "title": "Senior GTM Engineer",
+                "company": "Acme",
+                "metadata": {
+                    "post_url": "https://newsletter.substack.com/p/hiring-1",
+                },
+            }
+
+            with patch("scripts.daily_ingest.SubstackSource") as mock_class:
+                mock_instance = MagicMock()
+                mock_instance.fetch.return_value = [substack_job]
+                mock_class.return_value = mock_instance
+
+                with patch("scripts.daily_ingest.upsert_job_with_source") as mock_upsert:
+                    mock_upsert.return_value = UpsertResult(
+                        outcome="new_job",
+                        job_id=1,
+                        matched_job_id=None,
+                        fuzzy_score=None,
+                        trust_flipped=False,
+                        source_name="substack",
+                    )
+
+                    ingest_substack(store)
+
+                    call_args = mock_upsert.call_args
+                    job_passed = call_args[0][1]
+                    assert job_passed["source"] == "substack"
+
+    def test_ingest_substack_returns_zero_on_exception(self) -> None:
+        """If SubstackSource raises, ingest_substack returns 0 without propagating."""
+        from scripts.daily_ingest import ingest_substack
+
+        with JobStore(":memory:") as store:
+            with patch("scripts.daily_ingest.SubstackSource") as mock_class:
+                mock_class.side_effect = RuntimeError("scraper broken")
+
+                new_count = ingest_substack(store)
+                assert new_count == 0
+
+
 class TestCLIFlags:
     def test_skip_hn_flag_skips_hn_ingest(self) -> None:
         """--skip-hn flag should skip the HN Hiring phase."""
@@ -559,3 +654,46 @@ class TestLinkedInCLIFlags:
         _, kwargs = mock_jobspy.call_args
         # Legacy flag is a no-op; linkedin_lite should still be True (the default)
         assert kwargs.get("linkedin_lite") is True
+
+    def test_skip_substack_flag_skips_substack_ingest(self) -> None:
+        """--skip-substack flag should skip Substack ingestion."""
+        from scripts.daily_ingest import main
+
+        runner = CliRunner()
+
+        with patch("scripts.daily_ingest.JobStore"):
+            with patch("scripts.daily_ingest.ingest_ats"):
+                with patch("scripts.daily_ingest.ingest_jobspy"):
+                    with patch("scripts.daily_ingest.ingest_wellfound"):
+                        with patch("scripts.daily_ingest.ingest_substack") as mock_substack:
+                            with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                                with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                    result = runner.invoke(
+                                        main,
+                                        ["--skip-ats", "--skip-jobspy", "--skip-wellfound", "--skip-substack", "--skip-hn"],
+                                    )
+
+                                    assert result.exit_code == 0
+                                    assert not mock_substack.called
+
+    def test_no_skip_substack_flag_runs_substack_ingest(self) -> None:
+        """Without --skip-substack, ingest_substack should be called."""
+        from scripts.daily_ingest import main
+
+        runner = CliRunner()
+
+        with patch("scripts.daily_ingest.JobStore"):
+            with patch("scripts.daily_ingest.ingest_ats"):
+                with patch("scripts.daily_ingest.ingest_jobspy"):
+                    with patch("scripts.daily_ingest.ingest_wellfound"):
+                        with patch("scripts.daily_ingest.ingest_substack") as mock_substack:
+                            mock_substack.return_value = 0
+                            with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                                with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                    result = runner.invoke(
+                                        main,
+                                        ["--skip-ats", "--skip-jobspy", "--skip-wellfound", "--skip-hn"],
+                                    )
+
+                                    assert result.exit_code == 0
+                                    assert mock_substack.called
