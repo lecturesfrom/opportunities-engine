@@ -338,6 +338,95 @@ class TestIngestHNHiring:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Tests: ingest_wellfound
+# ---------------------------------------------------------------------------
+
+
+class TestIngestWellfound:
+    def test_ingest_wellfound_routes_through_upsert_job_with_source(self) -> None:
+        """Mock WellfoundSource.fetch → one upsert_job_with_source call with source_name='wellfound'."""
+        from scripts.daily_ingest import ingest_wellfound
+
+        with JobStore(":memory:") as store:
+            wf_job = {
+                "source": "wellfound",
+                "source_id": "1234567",
+                "url": "https://wellfound.com/jobs/1234567-senior-gtm-engineer",
+                "title": "Senior GTM Engineer",
+                "company": "Acme Corp",
+                "location": "Remote",
+                "is_remote": True,
+            }
+
+            with patch("scripts.daily_ingest.WellfoundSource") as mock_class:
+                mock_instance = MagicMock()
+                mock_instance.fetch.return_value = [wf_job]
+                mock_class.return_value = mock_instance
+
+                with patch("scripts.daily_ingest.upsert_job_with_source") as mock_upsert:
+                    mock_upsert.return_value = UpsertResult(
+                        outcome="new_job",
+                        job_id=1,
+                        matched_job_id=None,
+                        fuzzy_score=None,
+                        trust_flipped=False,
+                        source_name="wellfound",
+                    )
+
+                    new_count = ingest_wellfound(store)
+
+                    assert mock_upsert.called
+                    call_args = mock_upsert.call_args
+                    assert call_args[1]["source_name"] == "wellfound"
+                    assert new_count == 1
+
+    def test_ingest_wellfound_sets_source_field(self) -> None:
+        """ingest_wellfound overwrites source='wellfound' even if fetch returned something else."""
+        from scripts.daily_ingest import ingest_wellfound
+
+        with JobStore(":memory:") as store:
+            wf_job = {
+                # No source field — ingest_wellfound should set it
+                "source_id": "999",
+                "url": "https://wellfound.com/jobs/999-gtm",
+                "title": "GTM Engineer",
+                "company": "TestCo",
+            }
+
+            with patch("scripts.daily_ingest.WellfoundSource") as mock_class:
+                mock_instance = MagicMock()
+                mock_instance.fetch.return_value = [wf_job]
+                mock_class.return_value = mock_instance
+
+                with patch("scripts.daily_ingest.upsert_job_with_source") as mock_upsert:
+                    mock_upsert.return_value = UpsertResult(
+                        outcome="new_job",
+                        job_id=1,
+                        matched_job_id=None,
+                        fuzzy_score=None,
+                        trust_flipped=False,
+                        source_name="wellfound",
+                    )
+
+                    ingest_wellfound(store)
+
+                    call_args = mock_upsert.call_args
+                    job_passed = call_args[0][1]
+                    assert job_passed["source"] == "wellfound"
+
+    def test_ingest_wellfound_returns_zero_on_exception(self) -> None:
+        """If WellfoundSource raises, ingest_wellfound returns 0 without propagating."""
+        from scripts.daily_ingest import ingest_wellfound
+
+        with JobStore(":memory:") as store:
+            with patch("scripts.daily_ingest.WellfoundSource") as mock_class:
+                mock_class.side_effect = RuntimeError("scraper broken")
+
+                new_count = ingest_wellfound(store)
+                assert new_count == 0
+
+
 class TestCLIFlags:
     def test_skip_hn_flag_skips_hn_ingest(self) -> None:
         """--skip-hn flag should skip the HN Hiring phase."""
@@ -348,12 +437,15 @@ class TestCLIFlags:
         with patch("scripts.daily_ingest.JobStore"):
             with patch("scripts.daily_ingest.ingest_ats"):
                 with patch("scripts.daily_ingest.ingest_jobspy"):
-                    with patch("scripts.daily_ingest.ingest_hn_hiring") as mock_hn:
-                        with patch("scripts.daily_ingest.print_new_jobs_summary"):
-                            result = runner.invoke(main, ["--skip-ats", "--skip-jobspy", "--skip-hn"])
+                    with patch("scripts.daily_ingest.ingest_wellfound"):
+                        with patch("scripts.daily_ingest.ingest_hn_hiring") as mock_hn:
+                            with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                result = runner.invoke(
+                                    main, ["--skip-ats", "--skip-jobspy", "--skip-hn"]
+                                )
 
-                            # HN should not be called
-                            assert not mock_hn.called
+                                # HN should not be called
+                                assert not mock_hn.called
 
     def test_no_skip_hn_flag_runs_hn_ingest(self) -> None:
         """Without --skip-hn flag, ingest_hn_hiring should be called."""
@@ -364,12 +456,53 @@ class TestCLIFlags:
         with patch("scripts.daily_ingest.JobStore"):
             with patch("scripts.daily_ingest.ingest_ats"):
                 with patch("scripts.daily_ingest.ingest_jobspy"):
-                    with patch("scripts.daily_ingest.ingest_hn_hiring") as mock_hn:
-                        with patch("scripts.daily_ingest.print_new_jobs_summary"):
-                            result = runner.invoke(main, ["--skip-ats", "--skip-jobspy"])
+                    with patch("scripts.daily_ingest.ingest_wellfound"):
+                        with patch("scripts.daily_ingest.ingest_hn_hiring") as mock_hn:
+                            mock_hn.return_value = 0
+                            with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                result = runner.invoke(main, ["--skip-ats", "--skip-jobspy"])
 
-                            # HN should be called
-                            assert mock_hn.called
+                                # HN should be called
+                                assert mock_hn.called
+
+    def test_skip_wellfound_flag_skips_wellfound_ingest(self) -> None:
+        """--skip-wellfound flag should skip the Wellfound phase."""
+        from scripts.daily_ingest import main
+
+        runner = CliRunner()
+
+        with patch("scripts.daily_ingest.JobStore"):
+            with patch("scripts.daily_ingest.ingest_ats"):
+                with patch("scripts.daily_ingest.ingest_jobspy"):
+                    with patch("scripts.daily_ingest.ingest_wellfound") as mock_wf:
+                        with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                            with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                result = runner.invoke(
+                                    main,
+                                    ["--skip-ats", "--skip-jobspy", "--skip-wellfound", "--skip-hn"],
+                                )
+                                assert result.exit_code == 0
+                                assert not mock_wf.called
+
+    def test_no_skip_wellfound_flag_runs_wellfound_ingest(self) -> None:
+        """Without --skip-wellfound, ingest_wellfound should be called."""
+        from scripts.daily_ingest import main
+
+        runner = CliRunner()
+
+        with patch("scripts.daily_ingest.JobStore"):
+            with patch("scripts.daily_ingest.ingest_ats"):
+                with patch("scripts.daily_ingest.ingest_jobspy"):
+                    with patch("scripts.daily_ingest.ingest_wellfound") as mock_wf:
+                        mock_wf.return_value = 0
+                        with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                            with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                result = runner.invoke(
+                                    main,
+                                    ["--skip-ats", "--skip-jobspy", "--skip-hn"],
+                                )
+                                assert result.exit_code == 0
+                                assert mock_wf.called
 
 
 # ---------------------------------------------------------------------------
@@ -390,13 +523,14 @@ class TestLinkedInCLIFlags:
             with patch("scripts.daily_ingest.ingest_ats"):
                 with patch("scripts.daily_ingest.ingest_jobspy") as mock_jobspy:
                     mock_jobspy.return_value = 0
-                    with patch("scripts.daily_ingest.ingest_hn_hiring"):
-                        with patch("scripts.daily_ingest.print_new_jobs_summary"):
-                            result = runner.invoke(
-                                main,
-                                ["--skip-ats", "--skip-hn"] + extra_args,
-                            )
-                            return result, mock_jobspy
+                    with patch("scripts.daily_ingest.ingest_wellfound"):
+                        with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                            with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                                result = runner.invoke(
+                                    main,
+                                    ["--skip-ats", "--skip-hn"] + extra_args,
+                                )
+                                return result, mock_jobspy
 
     def test_default_invocation_enables_linkedin_lite(self) -> None:
         """Default invocation → linkedin_lite=True propagates to ingest_jobspy."""

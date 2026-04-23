@@ -22,6 +22,7 @@ from opportunities_engine.dedup import upsert_job_with_source
 from opportunities_engine.ingestion.ats import ATSClient
 from opportunities_engine.ingestion.jobspy_source import scrape_all
 from opportunities_engine.ingestion.hn_hiring import HNHiringSource
+from opportunities_engine.ingestion.wellfound import WellfoundSource
 from opportunities_engine.storage.db import JobStore
 
 console = Console()
@@ -109,6 +110,29 @@ def ingest_jobspy(
     return new_count
 
 
+def ingest_wellfound(store: JobStore) -> int:
+    """Scrape Wellfound. Returns count of NEW jobs (new_job + review_flagged)."""
+    new_count = 0
+    new_source_count = 0
+    dup_count = 0
+    try:
+        source = WellfoundSource()
+        for job in source.fetch():
+            job["source"] = "wellfound"  # ensure it's set regardless of what normalize did
+            result = upsert_job_with_source(store, job, source_name="wellfound")
+            if result.outcome in ("new_job", "review_flagged"):
+                new_count += 1
+            elif result.outcome == "new_source":
+                new_source_count += 1
+            else:
+                dup_count += 1
+    except Exception as e:
+        console.print(f"  [red]✗[/] Wellfound error: {e}")
+        return 0
+    console.print(f"  Wellfound: {new_count} new, {new_source_count} new_source, {dup_count} dup")
+    return new_count
+
+
 def ingest_hn_hiring(store: JobStore) -> int:
     """Scrape Hacker News 'Who is Hiring?' thread.
 
@@ -169,6 +193,7 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 @click.command()
 @click.option("--skip-ats", is_flag=True, help="Skip ATS ingestion")
 @click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion")
+@click.option("--skip-wellfound", is_flag=True, help="Skip Wellfound scraping")
 @click.option("--skip-hn", is_flag=True, help="Skip HN Hiring ingestion")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
@@ -184,6 +209,7 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 def main(
     skip_ats: bool,
     skip_jobspy: bool,
+    skip_wellfound: bool,
     skip_hn: bool,
     hours: int,
     results: int,
@@ -221,8 +247,13 @@ def main(
             )
             console.print()
 
+        if not skip_wellfound:
+            console.print("[bold]Phase 3: Wellfound[/bold]")
+            ingest_wellfound(store)
+            console.print()
+
         if not skip_hn:
-            console.print("[bold]Phase 3: HN Hiring[/bold]")
+            console.print("[bold]Phase 4: HN Hiring[/bold]")
             ingest_hn_hiring(store)
             console.print()
 
