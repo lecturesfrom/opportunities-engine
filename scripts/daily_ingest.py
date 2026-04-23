@@ -76,11 +76,11 @@ def ingest_jobspy(
     store: JobStore,
     results_per_term: int = 30,
     hours_old: int = 72,
-    linkedin_lite: bool = False,
+    linkedin_lite: bool = True,
     linkedin_terms_cap: int = 3,
     linkedin_results_cap: int = 8,
 ) -> int:
-    """Scrape JobSpy sources. Default: Indeed+Google. Optional: LinkedIn-lite.
+    """Scrape JobSpy sources. Default: Indeed+Google+LinkedIn-lite. Pass linkedin_lite=False to disable.
 
     Returns count of NEW jobs (new_job + review_flagged).
     """
@@ -172,7 +172,13 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 @click.option("--skip-hn", is_flag=True, help="Skip HN Hiring ingestion")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
-@click.option("--linkedin-lite", is_flag=True, help="Manual capped LinkedIn sweep (easy wins)")
+@click.option("--no-linkedin", "no_linkedin", is_flag=True, help="Disable LinkedIn-lite sweep (default is on)")
+@click.option(
+    "--linkedin-lite",
+    "linkedin_lite_legacy",
+    is_flag=True,
+    help="[Deprecated — no-op] LinkedIn-lite is now on by default; use --no-linkedin to disable",
+)
 @click.option("--linkedin-terms-cap", default=3, help="Max terms for LinkedIn-lite")
 @click.option("--linkedin-results-cap", default=8, help="Max results per term for LinkedIn-lite")
 def main(
@@ -181,7 +187,8 @@ def main(
     skip_hn: bool,
     hours: int,
     results: int,
-    linkedin_lite: bool,
+    no_linkedin: bool,
+    linkedin_lite_legacy: bool,
     linkedin_terms_cap: int,
     linkedin_results_cap: int,
 ) -> None:
@@ -191,6 +198,10 @@ def main(
     console.print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     console.print()
 
+    # LinkedIn-lite is on by default; --no-linkedin disables it.
+    # --linkedin-lite is kept as a no-op alias for backward-compat with existing cron jobs.
+    linkedin_lite = not no_linkedin
+
     with JobStore(settings.database_path) as store:
         if not skip_ats:
             console.print("[bold]Phase 1: ATS APIs[/bold]")
@@ -198,7 +209,7 @@ def main(
             console.print()
 
         if not skip_jobspy:
-            phase_title = "Phase 2: JobSpy (Indeed + Google + optional LinkedIn-lite)"
+            phase_title = "Phase 2: JobSpy (Indeed + Google + LinkedIn-lite)" if linkedin_lite else "Phase 2: JobSpy (Indeed + Google)"
             console.print(f"[bold]{phase_title}[/bold]")
             ingest_jobspy(
                 store,

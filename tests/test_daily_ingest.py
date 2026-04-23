@@ -370,3 +370,58 @@ class TestCLIFlags:
 
                             # HN should be called
                             assert mock_hn.called
+
+
+# ---------------------------------------------------------------------------
+# Tests: LinkedIn default-on + --no-linkedin / --linkedin-lite CLI flags
+# ---------------------------------------------------------------------------
+
+
+class TestLinkedInCLIFlags:
+    """Verify LinkedIn-lite is on by default and --no-linkedin disables it."""
+
+    def _run_main(self, extra_args: list[str]) -> tuple:
+        """Helper: invoke main with skip-ats, skip-hn, capture ingest_jobspy call args."""
+        from scripts.daily_ingest import main
+
+        runner = CliRunner()
+
+        with patch("scripts.daily_ingest.JobStore"):
+            with patch("scripts.daily_ingest.ingest_ats"):
+                with patch("scripts.daily_ingest.ingest_jobspy") as mock_jobspy:
+                    mock_jobspy.return_value = 0
+                    with patch("scripts.daily_ingest.ingest_hn_hiring"):
+                        with patch("scripts.daily_ingest.print_new_jobs_summary"):
+                            result = runner.invoke(
+                                main,
+                                ["--skip-ats", "--skip-hn"] + extra_args,
+                            )
+                            return result, mock_jobspy
+
+    def test_default_invocation_enables_linkedin_lite(self) -> None:
+        """Default invocation → linkedin_lite=True propagates to ingest_jobspy."""
+        result, mock_jobspy = self._run_main([])
+
+        assert result.exit_code == 0
+        assert mock_jobspy.called
+        _, kwargs = mock_jobspy.call_args
+        assert kwargs.get("linkedin_lite") is True
+
+    def test_no_linkedin_flag_disables_linkedin_lite(self) -> None:
+        """--no-linkedin → linkedin_lite=False propagates to ingest_jobspy."""
+        result, mock_jobspy = self._run_main(["--no-linkedin"])
+
+        assert result.exit_code == 0
+        assert mock_jobspy.called
+        _, kwargs = mock_jobspy.call_args
+        assert kwargs.get("linkedin_lite") is False
+
+    def test_linkedin_lite_legacy_flag_is_noop(self) -> None:
+        """--linkedin-lite (legacy) is accepted and keeps linkedin_lite=True (same as default)."""
+        result, mock_jobspy = self._run_main(["--linkedin-lite"])
+
+        assert result.exit_code == 0
+        assert mock_jobspy.called
+        _, kwargs = mock_jobspy.call_args
+        # Legacy flag is a no-op; linkedin_lite should still be True (the default)
+        assert kwargs.get("linkedin_lite") is True

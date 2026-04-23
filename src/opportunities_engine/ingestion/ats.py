@@ -152,6 +152,13 @@ def _normalize_ashby(slug: str, raw: dict) -> dict:
     salary_min = raw.get("compensation", {}).get("min") if isinstance(raw.get("compensation"), dict) else None
     salary_max = raw.get("compensation", {}).get("max") if isinstance(raw.get("compensation"), dict) else None
 
+    # Prefer Ashby's own isRemote metadata when present; fall back to location heuristic.
+    ashby_is_remote_flag = raw.get("isRemote")
+    if ashby_is_remote_flag is not None:
+        is_remote_val: bool | None = bool(ashby_is_remote_flag)
+    else:
+        is_remote_val = _infer_remote(location)
+
     return {
         "source": "ashby",
         "source_id": str(raw.get("id", "")),
@@ -162,7 +169,7 @@ def _normalize_ashby(slug: str, raw: dict) -> dict:
         "description": _clean(raw.get("description")) or _clean(raw.get("descriptionPlain")),
         "salary_min": salary_min,
         "salary_max": salary_max,
-        "is_remote": _infer_remote(location),
+        "is_remote": is_remote_val,
         "job_type": _infer_job_type(raw.get("employmentType")),
         "department": _clean(raw.get("department")),
         "metadata": {
