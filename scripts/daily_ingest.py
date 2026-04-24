@@ -22,6 +22,8 @@ from opportunities_engine.dedup import upsert_job_with_source
 from opportunities_engine.ingestion.ats import ATSClient
 from opportunities_engine.ingestion.jobspy_source import scrape_all
 from opportunities_engine.ingestion.hn_hiring import HNHiringSource
+from opportunities_engine.ingestion.substack import SubstackSource
+from opportunities_engine.ingestion.wellfound import WellfoundSource
 from opportunities_engine.storage.db import JobStore
 
 console = Console()
@@ -76,11 +78,11 @@ def ingest_jobspy(
     store: JobStore,
     results_per_term: int = 30,
     hours_old: int = 72,
-    linkedin_lite: bool = False,
+    linkedin_lite: bool = True,
     linkedin_terms_cap: int = 3,
     linkedin_results_cap: int = 8,
 ) -> int:
-    """Scrape JobSpy sources. Default: Indeed+Google. Optional: LinkedIn-lite.
+    """Scrape JobSpy sources. Default: Indeed+Google+LinkedIn-lite. Pass linkedin_lite=False to disable.
 
     Returns count of NEW jobs (new_job + review_flagged).
     """
@@ -106,6 +108,50 @@ def ingest_jobspy(
 
     mode = "JobSpy (Indeed+Google+LinkedIn-lite)" if linkedin_lite else "JobSpy (Indeed+Google)"
     console.print(f"  {mode}: {new_count} new, {new_source_count} new_source, {duplicate_count} duplicate")
+    return new_count
+
+
+def ingest_wellfound(store: JobStore) -> int:
+    """Scrape Wellfound. Returns count of NEW jobs (new_job + review_flagged)."""
+    new_count = 0
+    new_source_count = 0
+    dup_count = 0
+    try:
+        source = WellfoundSource()
+        for job in source.fetch():
+            job["source"] = "wellfound"  # ensure it's set regardless of what normalize did
+            result = upsert_job_with_source(store, job, source_name="wellfound")
+            if result.outcome in ("new_job", "review_flagged"):
+                new_count += 1
+            elif result.outcome == "new_source":
+                new_source_count += 1
+            else:
+                dup_count += 1
+    except Exception as e:
+        console.print(f"  [red]✗[/] Wellfound error: {e}")
+        return 0
+    console.print(f"  Wellfound: {new_count} new, {new_source_count} new_source, {dup_count} dup")
+    return new_count
+
+
+def ingest_substack(store: JobStore) -> int:
+    """Scrape configured Substack hiring roundups. Returns count of NEW jobs."""
+    new_count = new_source_count = dup_count = 0
+    try:
+        source = SubstackSource()
+    except Exception as e:
+        console.print(f"  [red]✗[/] Substack init error: {e}")
+        return 0
+    for job in source.fetch():
+        job["source"] = "substack"
+        result = upsert_job_with_source(store, job, source_name="substack")
+        if result.outcome in ("new_job", "review_flagged"):
+            new_count += 1
+        elif result.outcome == "new_source":
+            new_source_count += 1
+        else:
+            dup_count += 1
+    console.print(f"  Substack: {new_count} new, {new_source_count} new_source, {dup_count} dup")
     return new_count
 
 
@@ -169,19 +215,30 @@ def print_new_jobs_summary(store: JobStore, limit: int = 20) -> None:
 @click.command()
 @click.option("--skip-ats", is_flag=True, help="Skip ATS ingestion")
 @click.option("--skip-jobspy", is_flag=True, help="Skip JobSpy ingestion")
+@click.option("--skip-wellfound", is_flag=True, help="Skip Wellfound scraping")
+@click.option("--skip-substack", is_flag=True, help="Skip Substack hiring-roundup scraping")
 @click.option("--skip-hn", is_flag=True, help="Skip HN Hiring ingestion")
 @click.option("--hours", default=72, help="Hours old for JobSpy search")
 @click.option("--results", default=30, help="Results per search term for JobSpy")
-@click.option("--linkedin-lite", is_flag=True, help="Manual capped LinkedIn sweep (easy wins)")
+@click.option("--no-linkedin", "no_linkedin", is_flag=True, help="Disable LinkedIn-lite sweep (default is on)")
+@click.option(
+    "--linkedin-lite",
+    "linkedin_lite_legacy",
+    is_flag=True,
+    help="[Deprecated — no-op] LinkedIn-lite is now on by default; use --no-linkedin to disable",
+)
 @click.option("--linkedin-terms-cap", default=3, help="Max terms for LinkedIn-lite")
 @click.option("--linkedin-results-cap", default=8, help="Max results per term for LinkedIn-lite")
 def main(
     skip_ats: bool,
     skip_jobspy: bool,
+    skip_wellfound: bool,
+    skip_substack: bool,
     skip_hn: bool,
     hours: int,
     results: int,
-    linkedin_lite: bool,
+    no_linkedin: bool,
+    linkedin_lite_legacy: bool,
     linkedin_terms_cap: int,
     linkedin_results_cap: int,
 ) -> None:
@@ -191,6 +248,10 @@ def main(
     console.print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     console.print()
 
+    # LinkedIn-lite is on by default; --no-linkedin disables it.
+    # --linkedin-lite is kept as a no-op alias for backward-compat with existing cron jobs.
+    linkedin_lite = not no_linkedin
+
     with JobStore(settings.database_path) as store:
         if not skip_ats:
             console.print("[bold]Phase 1: ATS APIs[/bold]")
@@ -198,7 +259,7 @@ def main(
             console.print()
 
         if not skip_jobspy:
-            phase_title = "Phase 2: JobSpy (Indeed + Google + optional LinkedIn-lite)"
+            phase_title = "Phase 2: JobSpy (Indeed + Google + LinkedIn-lite)" if linkedin_lite else "Phase 2: JobSpy (Indeed + Google)"
             console.print(f"[bold]{phase_title}[/bold]")
             ingest_jobspy(
                 store,
@@ -210,8 +271,18 @@ def main(
             )
             console.print()
 
+        if not skip_wellfound:
+            console.print("[bold]Phase 3: Wellfound[/bold]")
+            ingest_wellfound(store)
+            console.print()
+
+        if not skip_substack:
+            console.print("[bold]Phase 4: Substack Hiring Roundups[/bold]")
+            ingest_substack(store)
+            console.print()
+
         if not skip_hn:
-            console.print("[bold]Phase 3: HN Hiring[/bold]")
+            console.print("[bold]Phase 5: HN Hiring[/bold]")
             ingest_hn_hiring(store)
             console.print()
 

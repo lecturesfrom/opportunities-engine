@@ -46,10 +46,52 @@ def _remote_badge(is_remote: bool | None) -> str:
     return ""
 
 
+def _format_job_entry(job: dict[str, Any], rank: int, dream_names: set[str]) -> list[str]:
+    """Format a single job as a multi-line Discord entry.
+
+    Returns a list of lines for this job (no trailing blank line).
+    """
+    title = str(job.get("title", "")).strip()
+    company = str(job.get("company", "")).strip()
+    score = job.get("similarity")
+    is_remote = job.get("is_remote")
+    source = str(job.get("source") or "unknown").strip()
+    url = str(job.get("url") or "").strip()
+    decision = job.get("decision")
+
+    emoji = _score_emoji(float(score) if score is not None else 0.0)
+    remote = _remote_badge(is_remote)
+    dream_marker = " ⭐" if company.lower() in dream_names else ""
+
+    score_str = f"{float(score):.2f}" if score is not None else ""
+    header = f"{rank}. {emoji} **{title}** @ {company}{dream_marker}{remote}"
+    if score_str:
+        header += f" ({score_str})"
+
+    lines = [header]
+
+    # Source + URL line
+    source_line = f"   📍 {source}"
+    if url:
+        source_line += f" · {url}"
+    lines.append(source_line)
+
+    # Score + decision line (only when at least one is present)
+    meta_parts: list[str] = []
+    if score is not None:
+        meta_parts.append(f"score {float(score):.2f}")
+    if decision:
+        meta_parts.append(f"decision: {decision}")
+    if meta_parts:
+        lines.append(f"   {' · '.join(meta_parts)}")
+
+    return lines
+
+
 def format_digest(jobs: list[dict[str, Any]]) -> str:
     """Format ranked jobs into a Discord-friendly digest message.
 
-    Shows: total count, top 3 picks with score + remote flag,
+    Shows: total count, top 3 picks with score + remote flag + source + URL,
     dream company callouts, and a closing line.
     Stays under DISCORD_MAX_LEN.
     """
@@ -69,16 +111,8 @@ def format_digest(jobs: list[dict[str, Any]]) -> str:
     top = jobs[:3]
     lines.append("**Top picks:**")
     for i, job in enumerate(top, 1):
-        title = str(job.get("title", "")).strip()
-        company = str(job.get("company", "")).strip()
-        score = float(job.get("similarity", 0))
-        is_remote = job.get("is_remote")
-        emoji = _score_emoji(score)
-        remote = _remote_badge(is_remote)
-        dream_marker = " ⭐" if company.lower() in dream_names else ""
-        lines.append(
-            f"{i}. {emoji} **{title}** @ {company}{dream_marker}{remote} ({score:.2f})"
-        )
+        lines.extend(_format_job_entry(job, i, dream_names))
+        lines.append("")  # blank line between picks
 
     # Dream company hits
     dream_hits = [
@@ -87,11 +121,10 @@ def format_digest(jobs: list[dict[str, Any]]) -> str:
     ]
     if dream_hits:
         names = [str(j.get("company", "")).strip() for j in dream_hits]
-        lines.append("")
         lines.append(f"⭐ Dream company hits: {', '.join(names[:5])}")
+        lines.append("")
 
     # Closing
-    lines.append("")
     lines.append("_Next digest auto-delivered tomorrow. Reply `apply` on any card to move it forward._")
 
     msg = "\n".join(lines)
@@ -99,7 +132,7 @@ def format_digest(jobs: list[dict[str, Any]]) -> str:
     # Truncate to Discord limit if needed
     if len(msg) > DISCORD_MAX_LEN:
         # Aggressive truncation: keep header + top 3, cut the rest
-        truncated = "\n".join(lines[:8])  # header + blank + top3 header + 3 picks + blank
+        truncated = "\n".join(lines[:12])  # header + blank + top3 header + ~3 entries (3 lines each + blank)
         if len(truncated) > DISCORD_MAX_LEN:
             truncated = truncated[: DISCORD_MAX_LEN - 3] + "..."
         msg = truncated

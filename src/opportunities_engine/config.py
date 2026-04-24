@@ -91,6 +91,11 @@ DEFAULT_TARGET_TITLES: list[str] = [
     "Revenue Lead",
 ]
 
+# Phase K.4: Substack hiring-roundup feeds. User populates with the
+# newsletters they monitor (e.g. https://lennysnewsletter.substack.com).
+# Empty list is safe — the ingest just returns zero jobs.
+SUBSTACK_HIRING_FEEDS: list[str] = []
+
 # Phase F.3: quality filters.
 #
 # Title exclusion: any job whose title matches one of these patterns is
